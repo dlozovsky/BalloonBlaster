@@ -14,4 +14,4 @@ Balloon Blaster is an exciting and interactive balloon popping game where player
 To run the game locally:
 1. Clone the repository:
    ```bash
-   git clone https://github.com/dlozovsky/BaloonBlaster.git
+   git clone https://github.com/dlozovsky/BalloonBlaster.git
