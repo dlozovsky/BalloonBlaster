@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balloon Blaster</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background-color: white;
+        }
+        #crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 9px;
+            top: 0;
+        }
+        #crosshair::after {
+            width: 20px;
+            height: 2px;
+            left: 0;
+            top: 9px;
+        }
+        #score-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 28px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 64, 129, 0.8);
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        #combo-container {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            color: white;
+            font-size: 22px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 64, 129, 0.8);
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        #level-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 28px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 64, 129, 0.8);
+            text-align: right;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        #timer-container {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: white;
+            font-size: 22px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 64, 129, 0.8);
+            text-align: right;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        #game-title {
+            color: white;
+            font-size: 60px;
+            margin-bottom: 50px;
+            text-shadow: 0 0 10px #ff4081, 0 0 20px #ff4081;
+        }
+        #start-button {
+            background-color: #ff4081;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            pointer-events: auto;
+            margin-bottom: 20px;
+        }
+        #start-button:hover {
+            background-color: #f50057;
+            transform: scale(1.05);
+        }
+        #help-button {
+            background-color: rgba(255, 255, 255, 0.8);
+            color: #ff4081;
+            border: none;
+            padding: 12px 25px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            pointer-events: auto;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        #help-button:hover {
+            background-color: rgba(255, 255, 255, 0.95);
+            transform: scale(1.05);
+        }
+        #game-over-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            text-align: center;
+            pointer-events: auto;
+        }
+        #game-over-title {
+            font-size: 50px;
+            margin-bottom: 20px;
+            color: #ff4081;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+        }
+        #game-over-message {
+            font-size: 20px;
+            margin-bottom: 30px;
+            max-width: 600px;
+        }
+        #final-score-container {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #ff4081;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #ff6699;
+        }
+        #pause-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            display: none;
+        }
+        #pause-title {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px #ff4081, 0 0 20px #ff4081;
+        }
+        #resume-button {
+            background-color: #ff4081;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            pointer-events: auto;
+            margin-bottom: 20px;
+        }
+        #resume-button:hover {
+            background-color: #f50057;
+            transform: scale(1.05);
+        }
+        #pause-help-button {
+            background-color: rgba(255, 255, 255, 0.8);
+            color: #ff4081;
+            border: none;
+            padding: 12px 25px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            pointer-events: auto;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+        #pause-help-button:hover {
+            background-color: rgba(255, 255, 255, 0.95);
+            transform: scale(1.05);
+        }
+        #pause-quit-button {
+            background-color: rgba(255, 64, 129, 0.3);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            pointer-events: auto;
+        }
+        #pause-quit-button:hover {
+            background-color: rgba(255, 64, 129, 0.5);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-container">
+        <div id="score-container">Score: <span id="score">0</span></div>
+        <div id="combo-container">Combo: <span id="combo">x1</span></div>
+        <div id="level-container">Level: <span id="level">1</span></div>
+        <div id="timer-container">Time: <span id="timer">60</span>s</div>
+        
+        <div id="crosshair"></div>
+        
+        <div id="start-screen">
+            <div id="game-title">BALLOON BLASTER</div>
+            <button id="start-button">START GAME</button>
+            <a id="help-button" href="help.html" target="_blank">HOW TO PLAY</a>
+        </div>
+        
+        <div id="game-over-screen" class="hidden">
+            <h1 id="game-over-title">GAME OVER</h1>
+            <p id="game-over-message"></p>
+            <div id="final-score-container">
+                Score: <span id="final-score">0</span> | Level: <span id="final-level">1</span>
+            </div>
+            <button id="share-button">SHARE YOUR SCORE!</button>
+            <button id="restart-button">PLAY AGAIN</button>
+        </div>
+        
+        <div id="pause-screen">
+            <div id="pause-title">GAME PAUSED</div>
+            <button id="resume-button">RESUME GAME</button>
+            <a id="pause-help-button" href="help.html" target="_blank">HOW TO PLAY</a>
+            <button id="pause-quit-button">QUIT GAME</button>
+        </div>
+    </div>
+
+    <!-- Three.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="config.js"></script>
+    <!-- Fix: Use a different approach for PointerLockControls -->
+    <script>
+        // Create a global variable to hold the PointerLockControls constructor
+        let PointerLockControls;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+
+    <script>
+        console.log("Script loaded"); // Confirm script is running
+
+        // Game variables
+        let scene, camera, renderer, controls;
+        let balloons = [];
+        let score = 0;
+        let timeRemaining = 60;
+        let gameActive = false;
+        let gamePaused = false;
+        let comboCount = 0;
+        let comboMultiplier = 1;
+        let comboTimer = null;
+        let lastHitTime = 0;
+        let comboResetDelay = 2000; // 2 seconds to keep combo
+        let currentLevel = 1;
+        let levelTimer = null;
+        let targetScore = 0; // Score needed to complete the current level
+        let maxLevel = 10; // Maximum level before ending the game
+        let levelScoreAtStart = 0; // Score at the start of the current level
+        
+        // Difficulty parameters that scale with level
+        let difficultyParams = {
+            balloonCount: 10,
+            specialBalloonChance: 0.2,
+            penaltyBalloonChance: 0, // Start with no penalty balloons
+            balloonSpeed: 1.0,
+            levelDuration: 60
+        };
+
+        // Sound effects
+        let shootSound, popSound, specialPopSound, bgMusic;
+        let audioLoader, listener;
+
+        // Room dimensions
+        const roomWidth = 20;
+        const roomHeight = 10;
+        const roomDepth = 20;
+
+        // Balloon types
+        const BALLOON_TYPES = {
+            NORMAL: {
+                color: 0xff4081,
+                scale: 0.5,
+                points: 1,
+                baseSpeed: 0.02
+            },
+            SPECIAL: {
+                color: 0xffeb3b,
+                scale: 0.7,
+                points: 5,
+                baseSpeed: 0.03
+            },
+            PENALTY: {
+                color: 0x000000, // Black color for penalty balloons
+                scale: 0.4,
+                points: -3, // Negative points when hit
+                baseSpeed: 0.04 // Faster than normal balloons
+            }
+        };
+
+        // Initialize the game
+        function init() {
+            console.log("Game initialized"); // Debugging line
+            
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb); // Sky blue background
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.6, 0); // Set camera at eye level
+
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Setup controls - Fix: Use the correct constructor
+            try {
+                // First try using the global THREE.PointerLockControls
+                controls = new THREE.PointerLockControls(camera, document.body);
+                console.log("Using THREE.PointerLockControls");
+            } catch (e) {
+                console.error("Error creating PointerLockControls:", e);
+                
+                // Fallback to a simple custom control system
+                console.log("Falling back to custom controls");
+                setupCustomControls();
+            }
+            
+            // Add event listeners for pointer lock
+            document.getElementById('start-button').addEventListener('click', function() {
+                controls.lock();
+                startGame();
+            });
+            
+            // Add pointer lock change event listeners
+            document.addEventListener('pointerlockchange', onPointerLockChange, false);
+            document.addEventListener('mozpointerlockchange', onPointerLockChange, false);
+            document.addEventListener('webkitpointerlockchange', onPointerLockChange, false);
+            
+            // Setup audio
+            setupAudio();
+            
+            // Add lights
+            addLights();
+            
+            // Create room
+            createRoom();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // Setup shooting mechanism
+            document.addEventListener('click', onShoot);
+            
+            // Start animation loop
+            animate();
+            
+            // Add event listeners for game controls
+            document.getElementById('start-button').addEventListener('click', startGame);
+            document.getElementById('restart-button').addEventListener('click', restartGame);
+            document.getElementById('resume-button').addEventListener('click', resumeGame);
+            document.getElementById('pause-quit-button').addEventListener('click', quitGame);
+        }
+        
+        // Add pointer lock change handler
+        function onPointerLockChange() {
+            if (document.pointerLockElement === document.body || 
+                document.mozPointerLockElement === document.body ||
+                document.webkitPointerLockElement === document.body) {
+                // Pointer is locked, game is active
+                if (!gameActive) {
+                    startGame();
+                }
+            } else {
+                // Pointer is unlocked, pause game if it was active
+                if (gameActive) {
+                    // Optional: Pause game when pointer lock is exited
+                    // For now, we'll just log it
+                    console.log("Pointer lock exited");
+                }
+            }
+        }
+
+        // Setup audio for the game
+        function setupAudio() {
+            // Create an audio listener and add it to the camera
+            listener = new THREE.AudioListener();
+            camera.add(listener);
+            
+            // Create sound effects
+            shootSound = new THREE.Audio(listener);
+            popSound = new THREE.Audio(listener);
+            specialPopSound = new THREE.Audio(listener);
+            bgMusic = new THREE.Audio(listener);
+            
+            // Create audio context
+            const audioContext = listener.context;
+            
+            // Generate shoot sound (laser-like)
+            const shootBuffer = createLaserSound(audioContext);
+            shootSound.setBuffer(shootBuffer);
+            shootSound.setVolume(0.5);
+            
+            // Generate pop sound
+            const popBuffer = createPopSound(audioContext);
+            popSound.setBuffer(popBuffer);
+            popSound.setVolume(0.5);
+            
+            // Generate special pop sound
+            const specialPopBuffer = createSpecialPopSound(audioContext);
+            specialPopSound.setBuffer(specialPopBuffer);
+            specialPopSound.setVolume(0.7);
+            
+            // Generate background music
+            const bgMusicBuffer = createBackgroundMusic(audioContext);
+            bgMusic.setBuffer(bgMusicBuffer);
+            bgMusic.setLoop(true);
+            bgMusic.setVolume(0.3);
+            
+            console.log("Audio setup complete with generated sounds");
+        }
+        
+        // Create a laser-like shoot sound
+        function createLaserSound(audioContext) {
+            const sampleRate = audioContext.sampleRate;
+            const duration = 0.3; // seconds
+            const numSamples = duration * sampleRate;
+            
+            // Create buffer
+            const buffer = audioContext.createBuffer(1, numSamples, sampleRate);
+            const channelData = buffer.getChannelData(0);
+            
+            // Generate laser sound (frequency sweep)
+            const startFreq = 880;
+            const endFreq = 220;
+            
+            for (let i = 0; i < numSamples; i++) {
+                const t = i / sampleRate;
+                const progress = i / numSamples;
+                const freq = startFreq - (startFreq - endFreq) * progress;
+                const amplitude = 0.5 * (1 - progress); // Fade out
+                
+                channelData[i] = amplitude * Math.sin(2 * Math.PI * freq * t);
+            }
+            
+            return buffer;
+        }
+        
+        // Create a pop sound
+        function createPopSound(audioContext) {
+            const sampleRate = audioContext.sampleRate;
+            const duration = 0.2; // seconds
+            const numSamples = duration * sampleRate;
+            
+            // Create buffer
+            const buffer = audioContext.createBuffer(1, numSamples, sampleRate);
+            const channelData = buffer.getChannelData(0);
+            
+            // Generate pop sound (quick attack, fast decay)
+            for (let i = 0; i < numSamples; i++) {
+                const t = i / sampleRate;
+                const progress = i / numSamples;
+                
+                // Quick attack, fast decay
+                let amplitude;
+                if (progress < 0.1) {
+                    amplitude = progress * 10; // Quick attack
+                } else {
+                    amplitude = 1 - ((progress - 0.1) / 0.9); // Decay
+                }
+                
+                const freq = 300 + 200 * (1 - progress);
+                channelData[i] = amplitude * Math.sin(2 * Math.PI * freq * t);
+            }
+            
+            return buffer;
+        }
+        
+        // Create a special pop sound
+        function createSpecialPopSound(audioContext) {
+            const sampleRate = audioContext.sampleRate;
+            const duration = 0.4; // seconds
+            const numSamples = duration * sampleRate;
+            
+            // Create buffer
+            const buffer = audioContext.createBuffer(1, numSamples, sampleRate);
+            const channelData = buffer.getChannelData(0);
+            
+            // Generate special pop sound (more complex with harmonics)
+            for (let i = 0; i < numSamples; i++) {
+                const t = i / sampleRate;
+                const progress = i / numSamples;
+                
+                // Attack-decay envelope
+                let amplitude;
+                if (progress < 0.05) {
+                    amplitude = progress * 20; // Quick attack
+                } else {
+                    amplitude = 1 - ((progress - 0.05) / 0.95); // Slower decay
+                }
+                
+                // Main tone with harmonics
+                const mainFreq = 440;
+                const harmonic1 = 660;
+                const harmonic2 = 880;
+                
+                channelData[i] = amplitude * (
+                    0.6 * Math.sin(2 * Math.PI * mainFreq * t) +
+                    0.3 * Math.sin(2 * Math.PI * harmonic1 * t) +
+                    0.1 * Math.sin(2 * Math.PI * harmonic2 * t)
+                );
+            }
+            
+            return buffer;
+        }
+        
+        // Create simple background music
+        function createBackgroundMusic(audioContext) {
+            const sampleRate = audioContext.sampleRate;
+            const duration = 10; // seconds (will be looped)
+            const numSamples = duration * sampleRate;
+            
+            // Create buffer
+            const buffer = audioContext.createBuffer(1, numSamples, sampleRate);
+            const channelData = buffer.getChannelData(0);
+            
+            // Simple chord progression
+            const chords = [
+                [220, 277.18, 329.63], // A minor
+                [246.94, 311.13, 370], // B diminished
+                [261.63, 329.63, 392], // C major
+                [220, 277.18, 329.63]  // A minor again
+            ];
+            
+            const chordDuration = duration / chords.length;
+            const samplesPerChord = numSamples / chords.length;
+            
+            // Generate simple background music
+            for (let i = 0; i < numSamples; i++) {
+                const t = i / sampleRate;
+                const chordIndex = Math.floor(i / samplesPerChord);
+                const chord = chords[chordIndex];
+                const chordProgress = (i % samplesPerChord) / samplesPerChord;
+                
+                // Amplitude envelope for each chord
+                let amplitude;
+                if (chordProgress < 0.1) {
+                    amplitude = chordProgress * 10; // Fade in
+                } else if (chordProgress > 0.9) {
+                    amplitude = (1 - (chordProgress - 0.9) * 10); // Fade out
+                }
+                
+                // Mix the frequencies of the current chord
+                let sample = 0;
+                for (let j = 0; j < chord.length; j++) {
+                    sample += Math.sin(2 * Math.PI * chord[j] * t) / chord.length;
+                }
+                
+                channelData[i] = amplitude * sample;
+            }
+            
+            return buffer;
+        }
+        
+        // Add lights to the scene
+        function addLights() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            // Directional light (sunlight)
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 10);
+            directionalLight.castShadow = true;
+            
+            // Configure shadow properties
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 50;
+            directionalLight.shadow.camera.left = -15;
+            directionalLight.shadow.camera.right = 15;
+            directionalLight.shadow.camera.top = 15;
+            directionalLight.shadow.camera.bottom = -15;
+            
+            scene.add(directionalLight);
+            
+            // Add some point lights for better atmosphere
+            const colors = [0x4e00ff, 0x00ff9e, 0xff7700];
+            colors.forEach((color, index) => {
+                const pointLight = new THREE.PointLight(color, 0.5, 15);
+                const x = Math.sin(index * Math.PI * 2 / colors.length) * roomWidth * 0.4;
+                const z = Math.cos(index * Math.PI * 2 / colors.length) * roomDepth * 0.4;
+                pointLight.position.set(x, roomHeight * 0.8, z);
+                scene.add(pointLight);
+            });
+        }
+
+        // Create the room environment
+        function createRoom() {
+            // Create floor
+            const floorGeometry = new THREE.PlaneGeometry(roomWidth, roomDepth);
+            const floorTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg');
+            floorTexture.wrapS = THREE.RepeatWrapping;
+            floorTexture.wrapT = THREE.RepeatWrapping;
+            floorTexture.repeat.set(4, 4);
+            const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            // Create ceiling
+            const ceilingGeometry = new THREE.PlaneGeometry(roomWidth, roomDepth);
+            const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+            const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+            ceiling.rotation.x = Math.PI / 2;
+            ceiling.position.y = roomHeight;
+            ceiling.receiveShadow = true;
+            scene.add(ceiling);
+            
+            // Create walls
+            const wallTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/brick_diffuse.jpg');
+            wallTexture.wrapS = THREE.RepeatWrapping;
+            wallTexture.wrapT = THREE.RepeatWrapping;
+            wallTexture.repeat.set(2, 1);
+            const wallMaterial = new THREE.MeshStandardMaterial({ map: wallTexture });
+            
+            // Back wall
+            const backWallGeometry = new THREE.PlaneGeometry(roomWidth, roomHeight);
+            const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+            backWall.position.z = -roomDepth / 2;
+            backWall.position.y = roomHeight / 2;
+            backWall.receiveShadow = true;
+            scene.add(backWall);
+            
+            // Front wall
+            const frontWallGeometry = new THREE.PlaneGeometry(roomWidth, roomHeight);
+            const frontWall = new THREE.Mesh(frontWallGeometry, wallMaterial);
+            frontWall.position.z = roomDepth / 2;
+            frontWall.position.y = roomHeight / 2;
+            frontWall.rotation.y = Math.PI;
+            frontWall.receiveShadow = true;
+            scene.add(frontWall);
+            
+            // Left wall
+            const leftWallGeometry = new THREE.PlaneGeometry(roomDepth, roomHeight);
+            const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+            leftWall.position.x = -roomWidth / 2;
+            leftWall.position.y = roomHeight / 2;
+            leftWall.rotation.y = Math.PI / 2;
+            leftWall.receiveShadow = true;
+            scene.add(leftWall);
+            
+            // Right wall
+            const rightWallGeometry = new THREE.PlaneGeometry(roomDepth, roomHeight);
+            const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
+            rightWall.position.x = roomWidth / 2;
+            rightWall.position.y = roomHeight / 2;
+            rightWall.rotation.y = -Math.PI / 2;
+            rightWall.receiveShadow = true;
+            scene.add(rightWall);
+        }
+
+        // Create a balloon object
+        function createBalloon(type) {
+            const balloonType = type === 'SPECIAL' ? BALLOON_TYPES.SPECIAL : type === 'PENALTY' ? BALLOON_TYPES.PENALTY : BALLOON_TYPES.NORMAL;
+            
+            // Create balloon geometry
+            const geometry = new THREE.SphereGeometry(1, 32, 16);
+            
+            // Create balloon material with shine
+            const material = new THREE.MeshPhongMaterial({
+                color: balloonType.color,
+                shininess: 100,
+                specular: 0x111111
+            });
+            
+            // Create balloon mesh
+            const balloon = new THREE.Mesh(geometry, material);
+            
+            // Scale the balloon
+            balloon.scale.set(
+                balloonType.scale,
+                balloonType.scale * 1.2, // Slightly taller for realistic shape
+                balloonType.scale
+            );
+            
+            // Add a string to the balloon
+            const stringGeometry = new THREE.CylinderGeometry(0.01, 0.01, 1, 8);
+            const stringMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const string = new THREE.Mesh(stringGeometry, stringMaterial);
+            string.position.y = -0.5 * balloonType.scale - 0.5;
+            balloon.add(string);
+            
+            // Position the balloon randomly within the room
+            balloon.position.set(
+                (Math.random() - 0.5) * (roomWidth - 2),
+                roomHeight * 0.3 + Math.random() * roomHeight * 0.5,
+                (Math.random() - 0.5) * (roomDepth - 2)
+            );
+            
+            // Add custom properties
+            balloon.userData = {
+                type: type,
+                points: balloonType.points,
+                speed: balloonType.baseSpeed * difficultyParams.balloonSpeed,
+                direction: new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 2
+                ).normalize()
+            };
+            
+            balloon.castShadow = true;
+            
+            // Add to scene and balloons array
+            scene.add(balloon);
+            balloons.push(balloon);
+            
+            return balloon;
+        }
+
+        // Spawn balloons
+        function spawnBalloons() {
+            // Keep a set number of balloons in the scene based on current level
+            const targetBalloonCount = Math.floor(difficultyParams.balloonCount);
+            const currentBalloonCount = balloons.length;
+            
+            if (currentBalloonCount < targetBalloonCount) {
+                const balloonsToSpawn = targetBalloonCount - currentBalloonCount;
+                
+                for (let i = 0; i < balloonsToSpawn; i++) {
+                    // Determine balloon type based on chances
+                    let balloonType;
+                    const rand = Math.random();
+                    
+                    // First check if it should be a penalty balloon (starting from level 2)
+                    if (currentLevel >= 2 && rand < difficultyParams.penaltyBalloonChance) {
+                        balloonType = 'PENALTY';
+                    } 
+                    // Then check if it should be a special balloon
+                    else if (rand < difficultyParams.specialBalloonChance) {
+                        balloonType = 'SPECIAL';
+                    } 
+                    // Otherwise it's a normal balloon
+                    else {
+                        balloonType = 'NORMAL';
+                    }
+                    
+                    createBalloon(balloonType);
+                }
+                
+                console.log(`Spawned ${balloonsToSpawn} new balloons. Total: ${balloons.length}`);
+            }
+        }
+
+        // Update balloon positions
+        function updateBalloons() {
+            const halfWidth = roomWidth / 2 - 1;
+            const minHeight = 1;
+            const maxHeight = roomHeight - 1;
+            const halfDepth = roomDepth / 2 - 1;
+            
+            balloons.forEach(balloon => {
+                // Move the balloon in its current direction
+                const speed = balloon.userData.speed;
+                balloon.position.x += balloon.userData.direction.x * speed;
+                balloon.position.y += balloon.userData.direction.y * speed;
+                balloon.position.z += balloon.userData.direction.z * speed;
+                
+                // Add a gentle floating motion
+                balloon.position.y += Math.sin(Date.now() * 0.002 + balloon.position.x) * 0.003;
+                
+                // Rotate a bit for liveliness
+                balloon.rotation.y += 0.005;
+                
+                // Bounce off the walls
+                if (balloon.position.x < -halfWidth || balloon.position.x > halfWidth) {
+                    balloon.userData.direction.x *= -1;
+                }
+                if (balloon.position.y < minHeight || balloon.position.y > maxHeight) {
+                    balloon.userData.direction.y *= -1;
+                }
+                if (balloon.position.z < -halfDepth || balloon.position.z > halfDepth) {
+                    balloon.userData.direction.z *= -1;
+                }
+                
+                // Keep the balloon within bounds (in case it somehow escapes)
+                balloon.position.x = Math.max(-halfWidth, Math.min(halfWidth, balloon.position.x));
+                balloon.position.y = Math.max(minHeight, Math.min(maxHeight, balloon.position.y));
+                balloon.position.z = Math.max(-halfDepth, Math.min(halfDepth, balloon.position.z));
+            });
+        }
+
+        // Handle shooting
+        function onShoot() {
+            if (!gameActive) return;
+            
+            // Play shoot sound
+            if (shootSound.buffer) shootSound.play();
+            
+            // Create raycaster from camera
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            
+            // Check for intersections with balloons
+            const intersects = raycaster.intersectObjects(balloons);
+            
+            if (intersects.length > 0) {
+                // We hit a balloon!
+                const balloon = intersects[0].object;
+                hitBalloon(balloon);
+            } else {
+                // We missed, reset combo
+                resetCombo();
+            }
+        }
+
+        // Update combo when a balloon is hit
+        function updateCombo() {
+            const now = Date.now();
+            
+            // If this hit is within the combo time window, increase combo
+            if (now - lastHitTime < comboResetDelay) {
+                comboCount++;
+                comboMultiplier = Math.min(Math.floor(comboCount / 2) + 1, 5); // Cap at 5x
+            } else {
+                // Too much time has passed, but we hit something so start a new combo
+                comboCount = 1;
+                comboMultiplier = 1;
+            }
+            
+            // Update last hit time
+            lastHitTime = now;
+            
+            // Update display
+            document.getElementById('combo').textContent = `x${comboMultiplier}`;
+            
+            // Clear existing timer and set a new one
+            if (comboTimer) clearTimeout(comboTimer);
+            comboTimer = setTimeout(resetCombo, comboResetDelay);
+        }
+
+        // Reset combo when timeout occurs or player misses
+        function resetCombo() {
+            comboCount = 0;
+            comboMultiplier = 1;
+            document.getElementById('combo').textContent = `x${comboMultiplier}`;
+            if (comboTimer) {
+                clearTimeout(comboTimer);
+                comboTimer = null;
+            }
+        }
+
+        // Update difficulty parameters based on current level
+        function updateDifficultyParams() {
+            // Increase balloon count with each level (capped at 30)
+            difficultyParams.balloonCount = Math.min(10 + (currentLevel - 1) * 2, 30);
+            
+            // Increase special balloon chance (capped at 0.5)
+            difficultyParams.specialBalloonChance = Math.min(0.2 + (currentLevel - 1) * 0.03, 0.5);
+            
+            // Penalty balloon chance (starts at level 2, increases gradually, capped at 0.3)
+            difficultyParams.penaltyBalloonChance = currentLevel >= 2 ? Math.min((currentLevel - 1) * 0.05, 0.3) : 0;
+            
+            // Increase balloon speed (uncapped for continuous challenge)
+            difficultyParams.balloonSpeed = 1.0 + (currentLevel - 1) * 0.15;
+            
+            // Set target score for this level (increases with each level)
+            // This is the additional score needed in this level, not total score
+            targetScore = currentLevel * 15; // 15 points per level
+            
+            console.log(`Level ${currentLevel} difficulty: ${JSON.stringify(difficultyParams)}, Target Score: ${targetScore}`);
+        }
+
+        // Start the game
+        function startGame() {
+            console.log("Start game function called"); // Debugging line
+            
+            // Lock pointer controls when game starts
+            controls.lock();
+            
+            // Hide start screen
+            document.getElementById('start-screen').classList.add('hidden');
+            
+            // Reset game variables
+            score = 0;
+            levelScoreAtStart = 0;
+            currentLevel = 1;
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = currentLevel;
+            
+            // Set initial difficulty
+            updateDifficultyParams();
+            
+            // Reset timer
+            timeRemaining = difficultyParams.levelDuration;
+            document.getElementById('timer').textContent = timeRemaining;
+            resetCombo();
+            
+            // Start the game
+            gameActive = true;
+            gamePaused = false;
+            
+            // Start background music
+            if (bgMusic.buffer) bgMusic.play();
+            
+            // Spawn initial balloons
+            spawnBalloons();
+            
+            // Show initial level message
+            showLevelMessage();
+            
+            // Start game timer
+            startLevelTimer();
+            
+            // Add event listeners for pause functionality
+            window.addEventListener('blur', pauseGame);
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // Lock pointer for better game control
+            document.body.requestPointerLock = document.body.requestPointerLock || 
+                                              document.body.mozRequestPointerLock ||
+                                              document.body.webkitRequestPointerLock;
+            document.body.requestPointerLock();
+        }
+        
+        // Pause the game
+        function pauseGame() {
+            if (gameActive && !gamePaused) {
+                gamePaused = true;
+                
+                // Pause the timer
+                clearInterval(levelTimer);
+                
+                // Show pause screen
+                document.getElementById('pause-screen').style.display = 'flex';
+                
+                // Exit pointer lock
+                document.exitPointerLock = document.exitPointerLock || 
+                                          document.mozExitPointerLock ||
+                                          document.webkitExitPointerLock;
+                document.exitPointerLock();
+            }
+        }
+        
+        // Resume the game
+        function resumeGame() {
+            if (gameActive && gamePaused) {
+                gamePaused = false;
+                
+                // Hide pause screen
+                document.getElementById('pause-screen').style.display = 'none';
+                
+                // Restart timer
+                startLevelTimer();
+                
+                // Lock pointer again
+                document.body.requestPointerLock();
+            }
+        }
+        
+        // Handle key presses
+        function handleKeyDown(event) {
+            // Pause/resume on Escape key
+            if (event.key === 'Escape') {
+                if (gameActive) {
+                    if (gamePaused) {
+                        resumeGame();
+                    } else {
+                        pauseGame();
+                    }
+                }
+            }
+        }
+        
+        // Quit game and return to start screen
+        function quitGame() {
+            // Clear timer
+            clearInterval(levelTimer);
+            
+            // Reset game state
+            gameActive = false;
+            gamePaused = false;
+            
+            // Hide pause screen
+            document.getElementById('pause-screen').style.display = 'none';
+            
+            // Show start screen
+            document.getElementById('start-screen').classList.remove('hidden');
+            
+            // Clear all balloons
+            while (balloons.length > 0) {
+                const balloon = balloons.pop();
+                scene.remove(balloon);
+            }
+            
+            // Remove event listeners
+            window.removeEventListener('blur', pauseGame);
+            document.removeEventListener('keydown', handleKeyDown);
+        }
+        
+        // Start the level timer
+        function startLevelTimer() {
+            // Clear any existing timer
+            if (levelTimer) {
+                clearInterval(levelTimer);
+            }
+            
+            // Start a new timer
+            levelTimer = setInterval(() => {
+                // Skip if game is paused
+                if (gamePaused) return;
+                
+                timeRemaining--;
+                document.getElementById('timer').textContent = timeRemaining;
+                
+                // Check if level is completed or time is up
+                if (timeRemaining <= 0) {
+                    clearInterval(levelTimer);
+                    
+                    // Calculate points earned in this level
+                    const pointsEarnedInLevel = score - levelScoreAtStart;
+                    
+                    // Check if player reached the target score for this level
+                    if (pointsEarnedInLevel >= targetScore) {
+                        // Level completed successfully
+                        if (currentLevel < maxLevel) {
+                            // Advance to next level
+                            nextLevel();
+                        } else {
+                            // Game completed - all levels finished
+                            endGame("CONGRATULATIONS!", `You completed all ${maxLevel} levels with a score of ${score}!`);
+                        }
+                    } else {
+                        // Level failed - didn't reach target score
+                        endGame("LEVEL FAILED", `You needed ${targetScore - pointsEarnedInLevel} more points to advance to level ${currentLevel + 1}. Final score: ${score}`);
+                    }
+                }
+            }, 1000);
+        }
+        
+        // Advance to the next level
+        function nextLevel() {
+            currentLevel++;
+            document.getElementById('level').textContent = currentLevel;
+            
+            // Update difficulty based on new level
+            updateDifficultyParams();
+            
+            // Reset timer
+            timeRemaining = difficultyParams.levelDuration;
+            document.getElementById('timer').textContent = timeRemaining;
+            
+            // Clear all balloons
+            while (balloons.length > 0) {
+                const balloon = balloons.pop();
+                scene.remove(balloon);
+            }
+            
+            // Spawn new balloons with updated difficulty
+            spawnBalloons();
+            
+            // Show level transition message
+            showLevelMessage();
+            
+            // Start timer for the next level
+            startLevelTimer();
+        }
+
+        // Show level transition message
+        function showLevelMessage() {
+            // Create a level transition message
+            const levelMessage = document.createElement('div');
+            levelMessage.style.position = 'absolute';
+            levelMessage.style.top = '50%';
+            levelMessage.style.left = '50%';
+            levelMessage.style.transform = 'translate(-50%, -50%)';
+            levelMessage.style.color = 'white';
+            levelMessage.style.fontSize = '48px';
+            levelMessage.style.fontWeight = 'bold';
+            levelMessage.style.textShadow = '3px 3px 6px rgba(0, 0, 0, 0.5)';
+            levelMessage.style.zIndex = '1000';
+            levelMessage.style.textAlign = 'center';
+            levelMessage.textContent = `LEVEL ${currentLevel}`;
+            
+            // Add target score information
+            const targetScoreInfo = document.createElement('div');
+            targetScoreInfo.style.fontSize = '24px';
+            targetScoreInfo.style.marginTop = '10px';
+            targetScoreInfo.textContent = `Target Score: +${targetScore} points`;
+            levelMessage.appendChild(targetScoreInfo);
+            
+            // Add penalty balloon warning if this is level 2
+            if (currentLevel === 2) {
+                const penaltyWarning = document.createElement('div');
+                penaltyWarning.style.fontSize = '20px';
+                penaltyWarning.style.marginTop = '10px';
+                penaltyWarning.style.color = '#ff0000';
+                penaltyWarning.textContent = `Warning: Black balloons will deduct 3 points!`;
+                levelMessage.appendChild(penaltyWarning);
+            }
+            
+            // Add to UI
+            document.getElementById('ui-container').appendChild(levelMessage);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                if (document.getElementById('ui-container').contains(levelMessage)) {
+                    document.getElementById('ui-container').removeChild(levelMessage);
+                }
+            }, 3000);
+        }
+        
+        // Show level failed message
+        function showLevelFailedMessage(levelScore) {
+            const failedMessage = document.createElement('div');
+            failedMessage.style.position = 'absolute';
+            failedMessage.style.top = '50%';
+            failedMessage.style.left = '50%';
+            failedMessage.style.transform = 'translate(-50%, -50%)';
+            failedMessage.style.color = '#ff4081';
+            failedMessage.style.fontSize = '48px';
+            failedMessage.style.fontWeight = 'bold';
+            failedMessage.style.textShadow = '3px 3px 6px rgba(0, 0, 0, 0.5)';
+            failedMessage.style.zIndex = '1000';
+            failedMessage.style.textAlign = 'center';
+            failedMessage.innerHTML = `LEVEL FAILED!<br><span style="font-size: 24px;">Score: ${levelScore} / ${targetScore} needed</span>`;
+            
+            // Add to UI container
+            document.getElementById('ui-container').appendChild(failedMessage);
+            
+            // Remove after 2 seconds
+            setTimeout(() => {
+                if (document.getElementById('ui-container').contains(failedMessage)) {
+                    document.getElementById('ui-container').removeChild(failedMessage);
+                }
+            }, 2000);
+        }
+        
+        // Show game completed message
+        function showGameCompletedMessage() {
+            const completedMessage = document.createElement('div');
+            completedMessage.style.position = 'absolute';
+            completedMessage.style.top = '50%';
+            completedMessage.style.left = '50%';
+            completedMessage.style.transform = 'translate(-50%, -50%)';
+            completedMessage.style.color = '#ffeb3b';
+            completedMessage.style.fontSize = '48px';
+            completedMessage.style.fontWeight = 'bold';
+            completedMessage.style.textShadow = '3px 3px 6px rgba(0, 0, 0, 0.5)';
+            completedMessage.style.zIndex = '1000';
+            completedMessage.style.textAlign = 'center';
+            completedMessage.innerHTML = `CONGRATULATIONS!<br><span style="font-size: 24px;">You completed all ${maxLevel} levels!</span>`;
+            
+            // Add to UI container
+            document.getElementById('ui-container').appendChild(completedMessage);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                if (document.getElementById('ui-container').contains(completedMessage)) {
+                    document.getElementById('ui-container').removeChild(completedMessage);
+                }
+            }, 3000);
+        }
+        
+        // End the game
+        function endGame(title, message) {
+            gameActive = false;
+            
+            // Stop background music
+            if (bgMusic.isPlaying) bgMusic.stop();
+            
+            // Clear level timer if it exists
+            if (levelTimer) {
+                clearInterval(levelTimer);
+                levelTimer = null;
+            }
+            
+            // Update game over screen
+            document.getElementById('game-over-title').textContent = title;
+            document.getElementById('game-over-title').style.color = title === 'CONGRATULATIONS!' ? '#ffeb3b' : '#ff4081';
+            document.getElementById('game-over-message').textContent = message;
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('final-level').textContent = currentLevel;
+            
+            // Show game over screen
+            document.getElementById('game-over-screen').classList.remove('hidden');
+            
+            // Release pointer
+            controls.unlock();
+            
+            // Clear all balloons
+            while (balloons.length > 0) {
+                const balloon = balloons.pop();
+                scene.remove(balloon);
+            }
+            
+            // Remove event listeners
+            window.removeEventListener('blur', pauseGame);
+            document.removeEventListener('keydown', handleKeyDown);
+        }
+        
+        // Restart the game
+        function restartGame() {
+            document.getElementById('game-over-screen').classList.add('hidden');
+            startGame();
+        }
+
+        // Share score on social media
+        function shareScore() {
+            const shareText = `I scored ${score} points and reached level ${currentLevel} in Balloon Blaster! Can you beat my score? Play now at: ${CONFIG.shareUrl}`;
+            
+            // Create a temporary textarea to copy the text
+            const textarea = document.createElement('textarea');
+            textarea.value = shareText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            // Show confirmation message
+            const confirmationMsg = document.createElement('div');
+            confirmationMsg.style.position = 'fixed';
+            confirmationMsg.style.top = '50%';
+            confirmationMsg.style.left = '50%';
+            confirmationMsg.style.transform = 'translate(-50%, -50%)';
+            confirmationMsg.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            confirmationMsg.style.color = 'white';
+            confirmationMsg.style.padding = '20px';
+            confirmationMsg.style.borderRadius = '10px';
+            confirmationMsg.style.zIndex = '1000';
+            confirmationMsg.style.textAlign = 'center';
+            confirmationMsg.innerHTML = `
+                <p>Score message copied to clipboard!</p>
+                <p>Share it with your friends on social media.</p>
+                <p><small>You can now paste the message anywhere.</small></p>
+            `;
+            document.body.appendChild(confirmationMsg);
+            
+            // Remove confirmation after 3 seconds
+            setTimeout(() => {
+                document.body.removeChild(confirmationMsg);
+            }, 3000);
+            
+            // Try to open share dialog on supported platforms
+            if (navigator.share) {
+                navigator.share({
+                    title: CONFIG.shareTitle,
+                    text: shareText,
+                    url: CONFIG.shareUrl
+                }).catch(err => {
+                    console.log('Error sharing:', err);
+                });
+            }
+        }
+        
+        // Handle window resizing
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Fallback custom controls if PointerLockControls fails
+        function setupCustomControls() {
+            // Create a simple object to mimic the PointerLockControls API
+            controls = {
+                isLocked: false,
+                
+                lock: function() {
+                    const element = document.body;
+                    this.isLocked = true;
+                    
+                    // Request pointer lock
+                    element.requestPointerLock = element.requestPointerLock || 
+                                                element.mozRequestPointerLock ||
+                                                element.webkitRequestPointerLock;
+                    if (element.requestPointerLock) {
+                        element.requestPointerLock();
+                    }
+                    
+                    // Setup mouse movement
+                    document.addEventListener('mousemove', this.onMouseMove.bind(this), false);
+                    
+                    // Setup keyboard controls
+                    document.addEventListener('keydown', this.onKeyDown.bind(this), false);
+                    document.addEventListener('keyup', this.onKeyUp.bind(this), false);
+                },
+                
+                unlock: function() {
+                    this.isLocked = false;
+                    
+                    // Exit pointer lock
+                    document.exitPointerLock = document.exitPointerLock ||
+                                            document.mozExitPointerLock ||
+                                            document.webkitExitPointerLock;
+                    if (document.exitPointerLock) {
+                        document.exitPointerLock();
+                    }
+                    
+                    // Remove event listeners
+                    document.removeEventListener('mousemove', this.onMouseMove.bind(this), false);
+                    document.removeEventListener('keydown', this.onKeyDown.bind(this), false);
+                    document.removeEventListener('keyup', this.onKeyUp.bind(this), false);
+                },
+                
+                onMouseMove: function(event) {
+                    if (!this.isLocked) return;
+                    
+                    const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+                    const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+                    
+                    // Rotate camera based on mouse movement
+                    camera.rotation.y -= movementX * 0.002;
+                    camera.rotation.x -= movementY * 0.002;
+                    
+                    // Limit vertical rotation to avoid flipping
+                    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+                },
+                
+                // Movement variables
+                moveForward: false,
+                moveBackward: false,
+                moveLeft: false,
+                moveRight: false,
+                
+                onKeyDown: function(event) {
+                    if (!this.isLocked) return;
+                    
+                    switch (event.code) {
+                        case 'KeyW': this.moveForward = true; break;
+                        case 'KeyS': this.moveBackward = true; break;
+                        case 'KeyA': this.moveLeft = true; break;
+                        case 'KeyD': this.moveRight = true; break;
+                    }
+                },
+                
+                onKeyUp: function(event) {
+                    if (!this.isLocked) return;
+                    
+                    switch (event.code) {
+                        case 'KeyW': this.moveForward = false; break;
+                        case 'KeyS': this.moveBackward = false; break;
+                        case 'KeyA': this.moveLeft = false; break;
+                        case 'KeyD': this.moveRight = false; break;
+                    }
+                },
+                
+                update: function() {
+                    if (!this.isLocked) return;
+                    
+                    // Movement speed
+                    const speed = 0.1;
+                    
+                    // Calculate movement direction
+                    const direction = new THREE.Vector3();
+                    
+                    if (this.moveForward) {
+                        direction.z -= speed;
+                    }
+                    if (this.moveBackward) {
+                        direction.z += speed;
+                    }
+                    if (this.moveLeft) {
+                        direction.x -= speed;
+                    }
+                    if (this.moveRight) {
+                        direction.x += speed;
+                    }
+                    
+                    // Apply rotation to movement
+                    direction.applyEuler(new THREE.Euler(0, camera.rotation.y, 0));
+                    
+                    // Update camera position
+                    camera.position.add(direction);
+                }
+            };
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Skip updates if game is paused
+            if (gamePaused) return;
+            
+            // Update custom controls if they're being used
+            if (controls.update && typeof controls.update === 'function') {
+                controls.update();
+            }
+            
+            if (gameActive) {
+                // Update balloon positions
+                updateBalloons();
+                
+                // Ensure we always have balloons in the scene
+                spawnBalloons();
+            }
+            // Render the scene
+            renderer.render(scene, camera);
+        }
+
+        // Initialize the game on load
+        window.onload = init;
+        
+        // Add event listeners for restart and share buttons
+        document.getElementById('restart-button').addEventListener('click', restartGame);
+        document.getElementById('share-button').addEventListener('click', shareScore);
+        
+        // Handle balloon hit
+        function hitBalloon(balloon) {
+            // Get balloon type and points
+            const balloonType = balloon.userData.type;
+            const points = balloon.userData.points;
+            
+            // Add points to score
+            score += points;
+            document.getElementById('score').textContent = score;
+            
+            // Play appropriate sound and show points indicator
+            if (balloonType === 'SPECIAL') {
+                if (specialPopSound.buffer) specialPopSound.play();
+                showPointsIndicator(points, balloon.position, '#ffeb3b');
+            } else if (balloonType === 'PENALTY') {
+                // Play a negative sound for penalty balloons
+                if (shootSound.buffer) {
+                    // Reuse shoot sound but lower pitch for penalty
+                    const penaltySound = shootSound.clone();
+                    penaltySound.setPlaybackRate(0.5); // Lower pitch
+                    penaltySound.play();
+                }
+                
+                // Show negative points indicator in bright red and larger
+                showPointsIndicator(points, balloon.position, '#ff0000', true);
+            } else {
+                if (popSound.buffer) popSound.play();
+                showPointsIndicator(points, balloon.position, '#ffffff');
+            }
+            
+            // Add particle effect
+            createPopEffect(balloon.position, balloonType);
+            
+            // Remove balloon from scene and array
+            scene.remove(balloon);
+            const balloonIndex = balloons.indexOf(balloon);
+            if (balloonIndex > -1) {
+                balloons.splice(balloonIndex, 1);
+            }
+            
+            // Update combo if not a penalty balloon
+            if (balloonType !== 'PENALTY') {
+                updateCombo();
+            } else {
+                // Reset combo for penalty balloons
+                resetCombo();
+            }
+        }
+        
+        // Show points indicator at balloon position
+        function showPointsIndicator(points, position, color, isNegative = false) {
+            // Convert 3D position to screen position
+            const vector = position.clone();
+            vector.project(camera);
+            
+            const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (- vector.y * 0.5 + 0.5) * window.innerHeight;
+            
+            // Create indicator element
+            const indicator = document.createElement('div');
+            indicator.textContent = points > 0 ? `+${points}` : `${points}`;
+            indicator.style.position = 'absolute';
+            indicator.style.left = `${x}px`;
+            indicator.style.top = `${y}px`;
+            indicator.style.color = color;
+            indicator.style.fontSize = isNegative ? '32px' : '24px'; // Larger for negative points
+            indicator.style.fontWeight = 'bold';
+            indicator.style.textShadow = isNegative ? 
+                '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000' : // Stronger outline for negative
+                '2px 2px 4px rgba(0, 0, 0, 0.5)';
+            indicator.style.pointerEvents = 'none'; // Don't interfere with clicks
+            indicator.style.zIndex = '100';
+            indicator.style.opacity = '1';
+            indicator.style.transition = 'all 1s ease-out';
+            
+            // Add to UI
+            document.getElementById('ui-container').appendChild(indicator);
+            
+            // Animate and remove
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+                indicator.style.transform = isNegative ? 
+                    'translateY(-80px) scale(1.2)' : // More dramatic animation for negative
+                    'translateY(-50px)';
+                
+                setTimeout(() => {
+                    if (document.getElementById('ui-container').contains(indicator)) {
+                        document.getElementById('ui-container').removeChild(indicator);
+                    }
+                }, 1000);
+            }, 10);
+        }
+        
+        // Create a visual effect when a balloon pops
+        function createPopEffect(position, type) {
+            const particleCount = type === 'SPECIAL' ? 20 : 10;
+            const color = type === 'SPECIAL' ? 0xffeb3b : type === 'PENALTY' ? 0x000000 : 0xff4081;
+            
+            // Create particles
+            for (let i = 0; i < particleCount; i++) {
+                const particleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const particleMaterial = new THREE.MeshBasicMaterial({ color: color });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                
+                // Position at the balloon's position
+                particle.position.copy(position);
+                
+                // Give random velocity in all directions
+                particle.userData = {
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.2,
+                        (Math.random() - 0.5) * 0.2,
+                        (Math.random() - 0.5) * 0.2
+                    ),
+                    lifetime: 0
+                };
+                
+                scene.add(particle);
+                
+                // Remove after a short time
+                setTimeout(() => {
+                    scene.remove(particle);
+                }, 500);
+            }
+        }
+    </script>
+</body>
+</html>
