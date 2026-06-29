@@ -56,7 +56,7 @@ You can open `index.html` in a browser, but a local server is recommended for co
 
 ## Configuration
 
-Edit [`config.js`](config.js):
+Edit [`js/config.js`](js/config.js):
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -71,18 +71,37 @@ Edit [`config.js`](config.js):
 
 ```
 BalloonBlaster/
-├── index.html          # Game (HTML, CSS, JavaScript)
-├── config.js           # Runtime configuration
-├── help.html           # Player help / rules
-├── vendor/             # Vendored Three.js (offline play)
+├── index.html              # Game shell (HTML + script entry)
+├── css/styles.css          # Game styles
+├── js/
+│   ├── main.js             # Entry point
+│   ├── config.js           # Runtime configuration
+│   ├── constants.js        # Shared constants
+│   ├── gameLogic.js        # Pure scoring/level logic (tested)
+│   ├── state.js            # Centralized game state
+│   ├── gameController.js   # Game flow and input
+│   ├── world.js            # Three.js scene, balloons, particles
+│   ├── audio.js            # Procedural audio
+│   ├── ui.js               # DOM overlays and HUD
+│   ├── storage.js          # localStorage helpers
+│   └── utils.js            # Shared utilities
+├── tests/gameLogic.test.js # Unit tests
+├── help.html               # Player help / rules
+├── vendor/                 # Vendored Three.js (offline play)
 │   ├── three.min.js
 │   └── PointerLockControls.js
-└── package.json        # Local dev server script
+└── package.json            # Dev server and test scripts
 ```
 
 ## Development
 
 VS Code users can launch Chrome against `http://localhost:8080` using the included `.vscode/launch.json`. Start the server first with `npm start`.
+
+Run unit tests with:
+
+```bash
+npm test
+```
 
 ## License
 

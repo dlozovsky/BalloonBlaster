@@ -1,0 +1,58 @@
+import { CONFIG } from './config.js';
+import { AUDIO_ENABLED_KEY, COMBO_RESET_DELAY, DEFAULT_DIFFICULTY, MAX_LEVEL } from './constants.js';
+
+export function createInitialState() {
+    return {
+        scene: null,
+        camera: null,
+        renderer: null,
+        controls: null,
+        balloons: [],
+        particles: [],
+        lastFrameTime: performance.now(),
+        score: 0,
+        timeRemaining: 60,
+        gameActive: false,
+        gamePaused: false,
+        comboCount: 0,
+        comboMultiplier: 1,
+        comboTimer: null,
+        lastHitTime: 0,
+        comboResetDelay: COMBO_RESET_DELAY,
+        currentLevel: 1,
+        levelTimer: null,
+        targetScore: 0,
+        maxLevel: MAX_LEVEL,
+        levelScoreAtStart: 0,
+        difficultyParams: { ...DEFAULT_DIFFICULTY },
+        shootSound: null,
+        popSound: null,
+        specialPopSound: null,
+        bgMusic: null,
+        listener: null,
+        audioEnabled: true,
+        fpsFrames: 0,
+        fpsLastSample: performance.now(),
+        fpsDisplay: 0,
+    };
+}
+
+export const state = createInitialState();
+
+export function resetComboState() {
+    state.comboCount = 0;
+    state.comboMultiplier = 1;
+    state.lastHitTime = 0;
+    if (state.comboTimer) {
+        clearTimeout(state.comboTimer);
+        state.comboTimer = null;
+    }
+}
+
+export function loadAudioPreference() {
+    const stored = localStorage.getItem(AUDIO_ENABLED_KEY);
+    if (stored === null) {
+        return CONFIG.audioEnabled !== false;
+    }
+    return stored === 'true';
+}
