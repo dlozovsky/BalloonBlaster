@@ -119,6 +119,7 @@ VS Code users can launch Chrome against `http://localhost:8080` using the includ
 | `npm start` | Serve the game at http://localhost:8080 |
 | `npm run lint` | Run ESLint |
 | `npm run check` | Lint + unit tests (CI fast path) |
+| `npm run check:all` | Lint + unit tests + Playwright e2e |
 | `npm test` | Node unit tests |
 | `npm run test:e2e` | Playwright browser smoke tests |
 
@@ -137,7 +138,11 @@ Playwright reports are uploaded as artifacts when e2e jobs fail.
 
 ### WebGL recovery
 
-If the GPU context is lost (common on mobile tab backgrounding), the game pauses automatically and shows a recovery banner. Rendering resumes when the browser restores the context.
+If the GPU context is lost (common on mobile tab backgrounding), the game pauses automatically and shows a recovery banner. Rendering resumes when the browser restores the context. Fatal error overlays are suppressed during recovery so the session can continue.
+
+### Performance checks
+
+Test mode (`?test=1`) exposes frame timing stats used by Playwright to verify the animation loop stays within a healthy budget in CI.
 
 ## License
 

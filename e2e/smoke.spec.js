@@ -175,6 +175,59 @@ test.describe('Balloon Blaster smoke tests', () => {
         expect(frameCount).toBeGreaterThan(20);
     });
 
+    test('advances to level 2 when level target is met at timer expiry', async ({ page }) => {
+        await page.goto('/?test=1');
+        await page.locator('#start-button').click();
+        await page.waitForFunction(() => window.__bbTest?.getTargetScore() === 15);
+
+        await page.evaluate(() => window.__bbTest.setScore(15));
+        await page.evaluate(() => window.__bbTest.expireLevelTimer());
+
+        await expect(page.locator('#level')).toHaveText('2');
+        await expect(page.locator('#game-over-screen')).toBeHidden();
+    });
+
+    test('shows level failed when timer expires below target score', async ({ page }) => {
+        await page.goto('/?test=1');
+        await page.locator('#start-button').click();
+        await page.waitForFunction(() => window.__bbTest?.getTargetScore() === 15);
+
+        await page.evaluate(() => window.__bbTest.setScore(0));
+        await page.evaluate(() => window.__bbTest.expireLevelTimer());
+
+        await expect(page.locator('#game-over-screen')).toBeVisible();
+        await expect(page.locator('#game-over-title')).toHaveText('LEVEL FAILED');
+    });
+
+    test('persists first_pop achievement after popping a balloon', async ({ page }) => {
+        await page.goto('/?test=1');
+        await page.locator('#start-button').click();
+        await page.waitForFunction(() => window.__bbTest?.getBalloonCount() > 0);
+
+        await page.evaluate(() => window.__bbTest.hitFirstBalloon());
+
+        const achievements = await page.evaluate(() => window.__bbTest.getUnlockedAchievements());
+        expect(achievements).toContain('first_pop');
+
+        const stored = await page.evaluate(() => {
+            const raw = localStorage.getItem('balloonBlasterSave');
+            return raw ? JSON.parse(raw).achievements : [];
+        });
+        expect(stored).toContain('first_pop');
+    });
+
+    test('maintains healthy average frame time during gameplay', async ({ page }) => {
+        await page.goto('/?test=1');
+        await page.locator('#start-button').click();
+        await page.waitForFunction(() => window.__bbTest?.getFrameCount() > 30, null, {
+            timeout: 10_000,
+        });
+
+        const stats = await page.evaluate(() => window.__bbTest.getPerformanceStats());
+        expect(stats.avgFrameMs).toBeGreaterThan(0);
+        expect(stats.avgFrameMs).toBeLessThan(250);
+    });
+
     test('loads on iPhone even if PointerLockControls is missing', async ({ browser }) => {
         const context = await browser.newContext({
             viewport: { width: 390, height: 844 },
