@@ -132,6 +132,17 @@
             margin-bottom: 10px;
             display: none;
         }
+        #fps-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #7cff7c;
+            font-family: monospace;
+            font-size: 14px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
         #start-screen {
             position: absolute;
             top: 0;
@@ -311,6 +322,7 @@
         <div id="level-container">Level: <span id="level">1</span></div>
         <div id="timer-container">Time: <span id="timer">60</span>s</div>
         <button id="mute-button" type="button" aria-label="Toggle sound">🔊</button>
+        <div id="fps-container" class="hidden">FPS: 0</div>
         
         <div id="crosshair"></div>
         
@@ -340,19 +352,15 @@
         </div>
     </div>
 
-    <!-- Three.js library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Three.js library (vendored for offline play) -->
+    <script src="vendor/three.min.js"></script>
     <script src="config.js"></script>
-    <!-- Fix: Use a different approach for PointerLockControls -->
     <script>
-        // Create a global variable to hold the PointerLockControls constructor
         let PointerLockControls;
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="vendor/PointerLockControls.js"></script>
 
     <script>
-        console.log("Script loaded"); // Confirm script is running
-
         // Game variables
         let scene, camera, renderer, controls;
         let balloons = [];
@@ -389,6 +397,9 @@
         let shootSound, popSound, specialPopSound, bgMusic;
         let audioLoader, listener;
         let audioEnabled = true;
+        let fpsFrames = 0;
+        let fpsLastSample = performance.now();
+        let fpsDisplay = 0;
 
         // Room dimensions
         const roomWidth = 20;
@@ -416,6 +427,88 @@
                 baseSpeed: 0.04 // Faster than normal balloons
             }
         };
+
+        function debugLog(...args) {
+            if (CONFIG.debugMode) {
+                console.log(...args);
+            }
+        }
+
+        function applyConfig() {
+            document.title = CONFIG.gameTitle;
+            document.getElementById('game-title').textContent = CONFIG.gameTitle.toUpperCase();
+
+            const fpsContainer = document.getElementById('fps-container');
+            if (CONFIG.showFPS) {
+                fpsContainer.classList.remove('hidden');
+            } else {
+                fpsContainer.classList.add('hidden');
+            }
+        }
+
+        function updateFpsCounter(now) {
+            if (!CONFIG.showFPS) {
+                return;
+            }
+
+            fpsFrames += 1;
+            if (now - fpsLastSample >= 1000) {
+                fpsDisplay = fpsFrames;
+                fpsFrames = 0;
+                fpsLastSample = now;
+                document.getElementById('fps-container').textContent = `FPS: ${fpsDisplay}`;
+            }
+        }
+
+        function createPatternTexture(drawPattern, width, height) {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const context = canvas.getContext('2d');
+            drawPattern(context, width, height);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        function createWoodFloorTexture() {
+            return createPatternTexture((context, width, height) => {
+                const plankHeight = 32;
+                for (let y = 0; y < height; y += plankHeight) {
+                    const shade = 110 + ((y / plankHeight) % 2) * 25;
+                    context.fillStyle = `rgb(${shade + 25}, ${shade}, ${shade - 35})`;
+                    context.fillRect(0, y, width, plankHeight);
+                    context.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                    context.beginPath();
+                    context.moveTo(0, y);
+                    context.lineTo(width, y);
+                    context.stroke();
+                }
+            }, 256, 256);
+        }
+
+        function createBrickWallTexture() {
+            return createPatternTexture((context, width, height) => {
+                const brickWidth = 64;
+                const brickHeight = 32;
+                context.fillStyle = '#8f4a3d';
+                context.fillRect(0, 0, width, height);
+
+                for (let row = 0; row < height / brickHeight; row++) {
+                    const offset = row % 2 === 0 ? 0 : brickWidth / 2;
+                    for (let col = -1; col < width / brickWidth + 1; col++) {
+                        const x = col * brickWidth + offset;
+                        const y = row * brickHeight;
+                        context.fillStyle = row % 2 === 0 ? '#b85c4a' : '#a05040';
+                        context.fillRect(x + 2, y + 2, brickWidth - 4, brickHeight - 4);
+                        context.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+                        context.strokeRect(x + 2, y + 2, brickWidth - 4, brickHeight - 4);
+                    }
+                }
+            }, 256, 128);
+        }
 
         function isPointerLocked() {
             return document.pointerLockElement === document.body ||
@@ -541,8 +634,7 @@
 
         // Initialize the game
         function init() {
-            console.log("Game initialized"); // Debugging line
-
+            applyConfig();
             audioEnabled = loadAudioPreference();
             updateHighScoreDisplay();
             
@@ -564,12 +656,10 @@
             try {
                 // First try using the global THREE.PointerLockControls
                 controls = new THREE.PointerLockControls(camera, document.body);
-                console.log("Using THREE.PointerLockControls");
-            } catch (e) {
-                console.error("Error creating PointerLockControls:", e);
-                
-                // Fallback to a simple custom control system
-                console.log("Falling back to custom controls");
+                debugLog("Using THREE.PointerLockControls");
+            } catch (error) {
+                console.error("Error creating PointerLockControls:", error);
+                debugLog("Falling back to custom controls");
                 setupCustomControls();
             }
             
@@ -612,7 +702,7 @@
                 document.webkitPointerLockElement === document.body;
 
             if (!isLocked && gameActive && !gamePaused) {
-                console.log("Pointer lock exited");
+                debugLog("Pointer lock exited");
             }
         }
 
@@ -653,8 +743,7 @@
             bgMusic.setVolume(0.3);
 
             applyAudioState();
-            
-            console.log("Audio setup complete with generated sounds");
+            debugLog("Audio setup complete");
         }
         
         // Create a laser-like shoot sound
@@ -837,7 +926,7 @@
         function createRoom() {
             // Create floor
             const floorGeometry = new THREE.PlaneGeometry(roomWidth, roomDepth);
-            const floorTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg');
+            const floorTexture = createWoodFloorTexture();
             floorTexture.wrapS = THREE.RepeatWrapping;
             floorTexture.wrapT = THREE.RepeatWrapping;
             floorTexture.repeat.set(4, 4);
@@ -857,7 +946,7 @@
             scene.add(ceiling);
             
             // Create walls
-            const wallTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/brick_diffuse.jpg');
+            const wallTexture = createBrickWallTexture();
             wallTexture.wrapS = THREE.RepeatWrapping;
             wallTexture.wrapT = THREE.RepeatWrapping;
             wallTexture.repeat.set(2, 1);
@@ -988,7 +1077,7 @@
                     createBalloon(balloonType);
                 }
                 
-                console.log(`Spawned ${balloonsToSpawn} new balloons. Total: ${balloons.length}`);
+                debugLog(`Spawned ${balloonsToSpawn} new balloons. Total: ${balloons.length}`);
             }
         }
 
@@ -1115,13 +1204,11 @@
             // This is the additional score needed in this level, not total score
             targetScore = currentLevel * 15; // 15 points per level
             
-            console.log(`Level ${currentLevel} difficulty: ${JSON.stringify(difficultyParams)}, Target Score: ${targetScore}`);
+            debugLog(`Level ${currentLevel} difficulty: ${JSON.stringify(difficultyParams)}, Target Score: ${targetScore}`);
         }
 
         // Start the game
         function startGame() {
-            console.log("Start game function called"); // Debugging line
-            
             // Lock pointer controls when game starts
             controls.lock();
             
@@ -1370,58 +1457,6 @@
             }, 3000);
         }
         
-        // Show level failed message
-        function showLevelFailedMessage(levelScore) {
-            const failedMessage = document.createElement('div');
-            failedMessage.style.position = 'absolute';
-            failedMessage.style.top = '50%';
-            failedMessage.style.left = '50%';
-            failedMessage.style.transform = 'translate(-50%, -50%)';
-            failedMessage.style.color = '#ff4081';
-            failedMessage.style.fontSize = '48px';
-            failedMessage.style.fontWeight = 'bold';
-            failedMessage.style.textShadow = '3px 3px 6px rgba(0, 0, 0, 0.5)';
-            failedMessage.style.zIndex = '1000';
-            failedMessage.style.textAlign = 'center';
-            failedMessage.innerHTML = `LEVEL FAILED!<br><span style="font-size: 24px;">Score: ${levelScore} / ${targetScore} needed</span>`;
-            
-            // Add to UI container
-            document.getElementById('ui-container').appendChild(failedMessage);
-            
-            // Remove after 2 seconds
-            setTimeout(() => {
-                if (document.getElementById('ui-container').contains(failedMessage)) {
-                    document.getElementById('ui-container').removeChild(failedMessage);
-                }
-            }, 2000);
-        }
-        
-        // Show game completed message
-        function showGameCompletedMessage() {
-            const completedMessage = document.createElement('div');
-            completedMessage.style.position = 'absolute';
-            completedMessage.style.top = '50%';
-            completedMessage.style.left = '50%';
-            completedMessage.style.transform = 'translate(-50%, -50%)';
-            completedMessage.style.color = '#ffeb3b';
-            completedMessage.style.fontSize = '48px';
-            completedMessage.style.fontWeight = 'bold';
-            completedMessage.style.textShadow = '3px 3px 6px rgba(0, 0, 0, 0.5)';
-            completedMessage.style.zIndex = '1000';
-            completedMessage.style.textAlign = 'center';
-            completedMessage.innerHTML = `CONGRATULATIONS!<br><span style="font-size: 24px;">You completed all ${maxLevel} levels!</span>`;
-            
-            // Add to UI container
-            document.getElementById('ui-container').appendChild(completedMessage);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                if (document.getElementById('ui-container').contains(completedMessage)) {
-                    document.getElementById('ui-container').removeChild(completedMessage);
-                }
-            }, 3000);
-        }
-        
         // End the game
         function endGame(title, message) {
             gameActive = false;
@@ -1474,19 +1509,7 @@
             startGame();
         }
 
-        // Share score on social media
-        function shareScore() {
-            const shareText = `I scored ${score} points and reached level ${currentLevel} in Balloon Blaster! Can you beat my score? Play now at: ${CONFIG.shareUrl}`;
-            
-            // Create a temporary textarea to copy the text
-            const textarea = document.createElement('textarea');
-            textarea.value = shareText;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            
-            // Show confirmation message
+        function showShareConfirmation() {
             const confirmationMsg = document.createElement('div');
             confirmationMsg.style.position = 'fixed';
             confirmationMsg.style.top = '50%';
@@ -1504,21 +1527,49 @@
                 <p><small>You can now paste the message anywhere.</small></p>
             `;
             document.body.appendChild(confirmationMsg);
-            
-            // Remove confirmation after 3 seconds
+
             setTimeout(() => {
                 document.body.removeChild(confirmationMsg);
             }, 3000);
-            
-            // Try to open share dialog on supported platforms
-            if (navigator.share) {
-                navigator.share({
-                    title: CONFIG.shareTitle,
-                    text: shareText,
-                    url: CONFIG.shareUrl
-                }).catch(err => {
-                    console.log('Error sharing:', err);
-                });
+        }
+
+        async function copyShareText(text) {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+                return;
+            }
+
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+
+        // Share score on social media
+        async function shareScore() {
+            const shareText = `I scored ${score} points and reached level ${currentLevel} in ${CONFIG.gameTitle}! Can you beat my score? Play now at: ${CONFIG.shareUrl}`;
+
+            try {
+                if (navigator.share) {
+                    await navigator.share({
+                        title: CONFIG.shareTitle,
+                        text: shareText,
+                        url: CONFIG.shareUrl,
+                    });
+                    return;
+                }
+
+                await copyShareText(shareText);
+                showShareConfirmation();
+            } catch (error) {
+                if (error?.name !== 'AbortError') {
+                    debugLog('Share failed:', error);
+                }
             }
         }
         
@@ -1652,6 +1703,7 @@
             const now = performance.now();
             const delta = Math.min((now - lastFrameTime) / 1000, 0.05);
             lastFrameTime = now;
+            updateFpsCounter(now);
             
             // Skip updates if game is paused
             if (gamePaused) {

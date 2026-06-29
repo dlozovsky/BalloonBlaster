@@ -1,0 +1,9 @@
+{
+  "name": "balloon-blaster",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A browser-based 3D balloon shooting arcade game",
+  "scripts": {
+    "start": "npx --yes serve . -p 8080"
+  }
+}
