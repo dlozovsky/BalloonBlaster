@@ -6,7 +6,7 @@ Balloon Blaster is an exciting and interactive balloon popping game where player
 ## Features
 - **Dynamic Levels**: Each level lasts 60 seconds and becomes progressively harder.
 - **Penalty Balloons**: Special black balloons that deduct points and reset combos.
-- **Pause Functionality**: Players can pause the game at any time by clicking outside the game or pressing the Escape key.
+- **Pause Functionality**: Players can pause the game by pressing the Escape key or when the game window loses focus.
 - **Score Sharing**: Players can share their scores on social media with a link to the game.
 - **Help System**: Comprehensive help section explaining game mechanics, scoring, and tips for success.
 

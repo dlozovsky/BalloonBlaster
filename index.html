@@ -406,12 +406,6 @@
                 setupCustomControls();
             }
             
-            // Add event listeners for pointer lock
-            document.getElementById('start-button').addEventListener('click', function() {
-                controls.lock();
-                startGame();
-            });
-            
             // Add pointer lock change event listeners
             document.addEventListener('pointerlockchange', onPointerLockChange, false);
             document.addEventListener('mozpointerlockchange', onPointerLockChange, false);
@@ -444,20 +438,12 @@
         
         // Add pointer lock change handler
         function onPointerLockChange() {
-            if (document.pointerLockElement === document.body || 
+            const isLocked = document.pointerLockElement === document.body ||
                 document.mozPointerLockElement === document.body ||
-                document.webkitPointerLockElement === document.body) {
-                // Pointer is locked, game is active
-                if (!gameActive) {
-                    startGame();
-                }
-            } else {
-                // Pointer is unlocked, pause game if it was active
-                if (gameActive) {
-                    // Optional: Pause game when pointer lock is exited
-                    // For now, we'll just log it
-                    console.log("Pointer lock exited");
-                }
+                document.webkitPointerLockElement === document.body;
+
+            if (!isLocked && gameActive && !gamePaused) {
+                console.log("Pointer lock exited");
             }
         }
 
@@ -904,7 +890,7 @@
             // If this hit is within the combo time window, increase combo
             if (now - lastHitTime < comboResetDelay) {
                 comboCount++;
-                comboMultiplier = Math.min(Math.floor(comboCount / 2) + 1, 5); // Cap at 5x
+                comboMultiplier = Math.min(comboCount, 4); // 2 hits = 2x, 3 = 3x, 4+ = 4x max
             } else {
                 // Too much time has passed, but we hit something so start a new combo
                 comboCount = 1;
@@ -1043,7 +1029,6 @@
         
         // Handle key presses
         function handleKeyDown(event) {
-            // Pause/resume on Escape key
             if (event.key === 'Escape') {
                 if (gameActive) {
                     if (gamePaused) {
@@ -1052,6 +1037,12 @@
                         pauseGame();
                     }
                 }
+                return;
+            }
+
+            if (event.code === 'Space' && gameActive && !gamePaused) {
+                event.preventDefault();
+                onShoot();
             }
         }
         
@@ -1124,6 +1115,7 @@
         // Advance to the next level
         function nextLevel() {
             currentLevel++;
+            levelScoreAtStart = score;
             document.getElementById('level').textContent = currentLevel;
             
             // Update difficulty based on new level
@@ -1485,56 +1477,45 @@
         // Initialize the game on load
         window.onload = init;
         
-        // Add event listeners for restart and share buttons
-        document.getElementById('restart-button').addEventListener('click', restartGame);
         document.getElementById('share-button').addEventListener('click', shareScore);
         
         // Handle balloon hit
         function hitBalloon(balloon) {
-            // Get balloon type and points
             const balloonType = balloon.userData.type;
-            const points = balloon.userData.points;
-            
-            // Add points to score
-            score += points;
+            const basePoints = balloon.userData.points;
+            let earnedPoints = basePoints;
+
+            if (balloonType === 'PENALTY') {
+                resetCombo();
+            } else {
+                updateCombo();
+                earnedPoints = basePoints * comboMultiplier;
+            }
+
+            score += earnedPoints;
             document.getElementById('score').textContent = score;
-            
-            // Play appropriate sound and show points indicator
+
             if (balloonType === 'SPECIAL') {
                 if (specialPopSound.buffer) specialPopSound.play();
-                showPointsIndicator(points, balloon.position, '#ffeb3b');
+                showPointsIndicator(earnedPoints, balloon.position, '#ffeb3b');
             } else if (balloonType === 'PENALTY') {
-                // Play a negative sound for penalty balloons
                 if (shootSound.buffer) {
-                    // Reuse shoot sound but lower pitch for penalty
                     const penaltySound = shootSound.clone();
-                    penaltySound.setPlaybackRate(0.5); // Lower pitch
+                    penaltySound.setPlaybackRate(0.5);
                     penaltySound.play();
                 }
-                
-                // Show negative points indicator in bright red and larger
-                showPointsIndicator(points, balloon.position, '#ff0000', true);
+                showPointsIndicator(earnedPoints, balloon.position, '#ff0000', true);
             } else {
                 if (popSound.buffer) popSound.play();
-                showPointsIndicator(points, balloon.position, '#ffffff');
+                showPointsIndicator(earnedPoints, balloon.position, '#ffffff');
             }
-            
-            // Add particle effect
+
             createPopEffect(balloon.position, balloonType);
-            
-            // Remove balloon from scene and array
+
             scene.remove(balloon);
             const balloonIndex = balloons.indexOf(balloon);
             if (balloonIndex > -1) {
                 balloons.splice(balloonIndex, 1);
-            }
-            
-            // Update combo if not a penalty balloon
-            if (balloonType !== 'PENALTY') {
-                updateCombo();
-            } else {
-                // Reset combo for penalty balloons
-                resetCombo();
             }
         }
         
