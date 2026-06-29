@@ -39,6 +39,7 @@ import {
     registerTouchCleanup,
     teardownGameplay,
 } from './lifecycle.js';
+import { initMenuState, syncMenuState } from './menuState.js';
 import { initStorage, saveHighScoreIfNeeded, saveSurvivalHighScoreIfNeeded } from './storage.js';
 import { loadAudioPreference, state } from './state.js';
 import {
@@ -362,9 +363,26 @@ function endGame(title, message) {
     clearBalloons();
     clearParticles();
     setMobileUiVisible(false);
+    syncMenuState();
 }
 
 export function startGame() {
+    try {
+        startGameInternal();
+    } catch (error) {
+        console.error('Failed to start game:', error);
+        state.gameActive = false;
+        state.gamePaused = false;
+        document.getElementById('start-screen')?.classList.remove('hidden');
+        showFatalError(
+            'Unable to start the game.',
+            error instanceof Error ? error.message : 'Unknown error',
+        );
+        syncMenuState();
+    }
+}
+
+function startGameInternal() {
     teardownGameplay();
 
     state.gameMode = getSelectedGameMode();
@@ -421,6 +439,7 @@ export function startGame() {
             onShoot: shoot,
         }));
         setMobileUiVisible(true);
+        syncMenuState();
         return;
     }
 
@@ -428,6 +447,7 @@ export function startGame() {
         document.body.mozRequestPointerLock ||
         document.body.webkitRequestPointerLock;
     document.body.requestPointerLock?.();
+    syncMenuState();
 }
 
 export function pauseGame() {
@@ -440,6 +460,7 @@ export function pauseGame() {
     state.levelEndAt = null;
     stopLevelTimer();
     document.getElementById('pause-screen').style.display = 'flex';
+    syncMenuState();
 
     if (!state.isTouchDevice) {
         document.exitPointerLock = document.exitPointerLock ||
@@ -456,6 +477,7 @@ export function resumeGame() {
 
     state.gamePaused = false;
     document.getElementById('pause-screen').style.display = 'none';
+    syncMenuState();
     startLevelTimer();
     void resumeAudioOnGesture();
     void playBackgroundMusic();
@@ -493,6 +515,7 @@ export function quitGame() {
     clearParticles();
     stopBackgroundMusic();
     setMobileUiVisible(false);
+    syncMenuState();
 }
 
 export function restartGame() {
@@ -541,8 +564,9 @@ function animate() {
 
 export function initGame() {
     initStorage();
+    state.isTouchDevice = isTouchDevice();
 
-    const capabilities = checkCapabilities();
+    const capabilities = checkCapabilities(state.isTouchDevice);
     if (!capabilities.ok) {
         showFatalError(capabilities.reason, capabilities.details);
         return;
@@ -556,11 +580,14 @@ export function initGame() {
     updateAchievementsDisplay();
 
     initRenderer();
+    syncMenuState();
     setupControls();
 
-    addManagedListener(document, 'pointerlockchange', onPointerLockChange, false);
-    addManagedListener(document, 'mozpointerlockchange', onPointerLockChange, false);
-    addManagedListener(document, 'webkitpointerlockchange', onPointerLockChange, false);
+    if (!state.isTouchDevice) {
+        addManagedListener(document, 'pointerlockchange', onPointerLockChange, false);
+        addManagedListener(document, 'mozpointerlockchange', onPointerLockChange, false);
+        addManagedListener(document, 'webkitpointerlockchange', onPointerLockChange, false);
+    }
 
     setupAudio();
     setupAudioBanner();
@@ -570,11 +597,6 @@ export function initGame() {
     addManagedListener(window, 'resize', onWindowResize, false);
     addManagedListener(document, 'click', onShoot);
 
-    registerTouchCleanup(setupTouchControls(state.renderer.domElement, {
-        onAim: applyTouchAim,
-        onShoot: shoot,
-    }));
-
     const onVisibility = () => onVisibilityChange();
     addManagedListener(document, 'visibilitychange', onVisibility);
 
@@ -583,4 +605,5 @@ export function initGame() {
     }
     animate();
     applyAudioState();
+    initMenuState();
 }

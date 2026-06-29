@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Balloon Blaster</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <div id="game-canvas" aria-hidden="true"></div>
     <div id="ui-container" aria-live="polite">
         <div id="score-container">Score: <span id="score">0</span></div>
         <div id="combo-container">Combo: <span id="combo">x1</span></div>
@@ -38,7 +40,7 @@
                 <h2>Achievements</h2>
                 <ul id="achievements-list" aria-label="Achievement progress"></ul>
             </div>
-            <button id="start-button">START GAME</button>
+            <button id="start-button" type="button" onclick="window.__bbStartGame && window.__bbStartGame()">START GAME</button>
             <a id="help-button" href="help.html" target="_blank">HOW TO PLAY</a>
         </div>
 
@@ -72,9 +74,6 @@
     </div>
 
     <script src="vendor/three.min.js"></script>
-    <script>
-        let PointerLockControls;
-    </script>
     <script src="vendor/PointerLockControls.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>

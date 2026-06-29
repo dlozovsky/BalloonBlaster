@@ -1,3 +1,5 @@
+import { isTouchDevice } from './touch.js';
+
 export function isWebGLAvailable() {
     try {
         const canvas = document.createElement('canvas');
@@ -9,7 +11,11 @@ export function isWebGLAvailable() {
     }
 }
 
-export function checkCapabilities() {
+export function needsPointerLockControls(touchDevice = isTouchDevice()) {
+    return !touchDevice;
+}
+
+export function checkCapabilities(touchDevice = isTouchDevice()) {
     if (typeof THREE === 'undefined') {
         return {
             ok: false,
@@ -18,7 +24,7 @@ export function checkCapabilities() {
         };
     }
 
-    if (typeof PointerLockControls === 'undefined') {
+    if (needsPointerLockControls(touchDevice) && typeof THREE.PointerLockControls === 'undefined') {
         return {
             ok: false,
             reason: 'Required game controls failed to load.',

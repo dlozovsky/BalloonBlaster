@@ -6,6 +6,15 @@
   "description": "A browser-based 3D balloon shooting arcade game",
   "scripts": {
     "start": "npx --yes serve . -p 8080",
-    "test": "node --test tests/**/*.test.js"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@playwright/test": "^1.57.0",
+    "eslint": "^9.39.2",
+    "globals": "^16.5.0"
   }
 }
