@@ -4,7 +4,7 @@ const CONFIG = {
     gameTitle: "Balloon Blaster",
     
     // Sharing settings
-    shareUrl: "https://github.com/dlozovsky/BaloonBlaster", // Change this to your actual hosting URL
+    shareUrl: "https://github.com/dlozovsky/BalloonBlaster",
     shareTitle: "My Balloon Blaster Score",
     
     // Audio settings

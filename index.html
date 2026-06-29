@@ -99,6 +99,39 @@
             border-radius: 10px;
             font-weight: bold;
         }
+        #mute-button {
+            position: absolute;
+            top: 140px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.4);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s;
+        }
+        #mute-button:hover {
+            background-color: rgba(255, 64, 129, 0.5);
+        }
+        #high-score-container {
+            color: white;
+            font-size: 20px;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+        #new-high-score {
+            color: #ffeb3b;
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: none;
+        }
         #start-screen {
             position: absolute;
             top: 0;
@@ -277,17 +310,20 @@
         <div id="combo-container">Combo: <span id="combo">x1</span></div>
         <div id="level-container">Level: <span id="level">1</span></div>
         <div id="timer-container">Time: <span id="timer">60</span>s</div>
+        <button id="mute-button" type="button" aria-label="Toggle sound">🔊</button>
         
         <div id="crosshair"></div>
         
         <div id="start-screen">
             <div id="game-title">BALLOON BLASTER</div>
+            <div id="high-score-container">Best: <span id="best-score">0</span> pts (Level <span id="best-level">1</span>)</div>
             <button id="start-button">START GAME</button>
             <a id="help-button" href="help.html" target="_blank">HOW TO PLAY</a>
         </div>
         
         <div id="game-over-screen" class="hidden">
             <h1 id="game-over-title">GAME OVER</h1>
+            <p id="new-high-score">NEW HIGH SCORE!</p>
             <p id="game-over-message"></p>
             <div id="final-score-container">
                 Score: <span id="final-score">0</span> | Level: <span id="final-level">1</span>
@@ -320,6 +356,11 @@
         // Game variables
         let scene, camera, renderer, controls;
         let balloons = [];
+        let particles = [];
+        let lastFrameTime = performance.now();
+        const PARTICLE_LIFETIME = 0.5;
+        const HIGH_SCORE_KEY = 'balloonBlasterHighScore';
+        const AUDIO_ENABLED_KEY = 'balloonBlasterAudioEnabled';
         let score = 0;
         let timeRemaining = 60;
         let gameActive = false;
@@ -347,6 +388,7 @@
         // Sound effects
         let shootSound, popSound, specialPopSound, bgMusic;
         let audioLoader, listener;
+        let audioEnabled = true;
 
         // Room dimensions
         const roomWidth = 20;
@@ -375,9 +417,134 @@
             }
         };
 
+        function isPointerLocked() {
+            return document.pointerLockElement === document.body ||
+                document.mozPointerLockElement === document.body ||
+                document.webkitPointerLockElement === document.body;
+        }
+
+        function getHighScore() {
+            try {
+                const stored = localStorage.getItem(HIGH_SCORE_KEY);
+                if (!stored) {
+                    return { bestScore: 0, bestLevel: 1 };
+                }
+                const parsed = JSON.parse(stored);
+                return {
+                    bestScore: Number(parsed.bestScore) || 0,
+                    bestLevel: Number(parsed.bestLevel) || 1,
+                };
+            } catch {
+                return { bestScore: 0, bestLevel: 1 };
+            }
+        }
+
+        function updateHighScoreDisplay() {
+            const { bestScore, bestLevel } = getHighScore();
+            document.getElementById('best-score').textContent = bestScore;
+            document.getElementById('best-level').textContent = bestLevel;
+        }
+
+        function saveHighScoreIfNeeded() {
+            const current = getHighScore();
+            const isNewRecord = score > current.bestScore ||
+                (score === current.bestScore && currentLevel > current.bestLevel);
+
+            if (isNewRecord) {
+                localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify({
+                    bestScore: score,
+                    bestLevel: currentLevel,
+                }));
+                updateHighScoreDisplay();
+            }
+
+            return isNewRecord;
+        }
+
+        function loadAudioPreference() {
+            const stored = localStorage.getItem(AUDIO_ENABLED_KEY);
+            if (stored === null) {
+                return CONFIG.audioEnabled !== false;
+            }
+            return stored === 'true';
+        }
+
+        function updateMuteButton() {
+            const button = document.getElementById('mute-button');
+            button.textContent = audioEnabled ? '🔊' : '🔇';
+            button.setAttribute('aria-label', audioEnabled ? 'Mute sound' : 'Unmute sound');
+        }
+
+        function applyAudioState() {
+            if (!shootSound) {
+                return;
+            }
+
+            const sfxVolume = audioEnabled ? 1 : 0;
+            shootSound.setVolume(0.5 * sfxVolume);
+            popSound.setVolume(0.5 * sfxVolume);
+            specialPopSound.setVolume(0.7 * sfxVolume);
+            bgMusic.setVolume(0.3 * sfxVolume);
+
+            if (!audioEnabled && bgMusic.isPlaying) {
+                bgMusic.stop();
+            }
+
+            updateMuteButton();
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            localStorage.setItem(AUDIO_ENABLED_KEY, String(audioEnabled));
+            applyAudioState();
+        }
+
+        function playSound(sound) {
+            if (!audioEnabled || !sound?.buffer) {
+                return;
+            }
+            sound.play();
+        }
+
+        function playBackgroundMusic() {
+            if (!audioEnabled || !bgMusic?.buffer || bgMusic.isPlaying) {
+                return;
+            }
+            bgMusic.play();
+        }
+
+        function clearParticles() {
+            while (particles.length > 0) {
+                const particle = particles.pop();
+                scene.remove(particle);
+            }
+        }
+
+        function updateParticles(delta) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                particle.userData.lifetime += delta;
+
+                if (particle.userData.lifetime >= PARTICLE_LIFETIME) {
+                    scene.remove(particle);
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                particle.position.addScaledVector(particle.userData.velocity, delta * 60);
+                particle.userData.velocity.y -= 0.08 * delta;
+
+                const fade = 1 - (particle.userData.lifetime / PARTICLE_LIFETIME);
+                particle.scale.setScalar(Math.max(fade, 0.1));
+            }
+        }
+
         // Initialize the game
         function init() {
             console.log("Game initialized"); // Debugging line
+
+            audioEnabled = loadAudioPreference();
+            updateHighScoreDisplay();
             
             // Create scene
             scene = new THREE.Scene();
@@ -434,6 +601,8 @@
             document.getElementById('restart-button').addEventListener('click', restartGame);
             document.getElementById('resume-button').addEventListener('click', resumeGame);
             document.getElementById('pause-quit-button').addEventListener('click', quitGame);
+            document.getElementById('mute-button').addEventListener('click', toggleAudio);
+            updateMuteButton();
         }
         
         // Add pointer lock change handler
@@ -482,6 +651,8 @@
             bgMusic.setBuffer(bgMusicBuffer);
             bgMusic.setLoop(true);
             bgMusic.setVolume(0.3);
+
+            applyAudioState();
             
             console.log("Audio setup complete with generated sounds");
         }
@@ -860,11 +1031,18 @@
         }
 
         // Handle shooting
-        function onShoot() {
-            if (!gameActive) return;
+        function onShoot(event) {
+            if (!gameActive || gamePaused) {
+                return;
+            }
+
+            if (event?.type === 'click') {
+                if (!isPointerLocked() || event.target !== renderer.domElement) {
+                    return;
+                }
+            }
             
-            // Play shoot sound
-            if (shootSound.buffer) shootSound.play();
+            playSound(shootSound);
             
             // Create raycaster from camera
             const raycaster = new THREE.Raycaster();
@@ -964,13 +1142,14 @@
             timeRemaining = difficultyParams.levelDuration;
             document.getElementById('timer').textContent = timeRemaining;
             resetCombo();
+            clearParticles();
             
             // Start the game
             gameActive = true;
             gamePaused = false;
             
             // Start background music
-            if (bgMusic.buffer) bgMusic.play();
+            playBackgroundMusic();
             
             // Spawn initial balloons
             spawnBalloons();
@@ -1024,6 +1203,7 @@
                 
                 // Lock pointer again
                 document.body.requestPointerLock();
+                playBackgroundMusic();
             }
         }
         
@@ -1065,6 +1245,11 @@
             while (balloons.length > 0) {
                 const balloon = balloons.pop();
                 scene.remove(balloon);
+            }
+            clearParticles();
+
+            if (bgMusic.isPlaying) {
+                bgMusic.stop();
             }
             
             // Remove event listeners
@@ -1256,6 +1441,9 @@
             document.getElementById('game-over-message').textContent = message;
             document.getElementById('final-score').textContent = score;
             document.getElementById('final-level').textContent = currentLevel;
+
+            const isNewRecord = saveHighScoreIfNeeded();
+            document.getElementById('new-high-score').style.display = isNewRecord ? 'block' : 'none';
             
             // Show game over screen
             document.getElementById('game-over-screen').classList.remove('hidden');
@@ -1268,6 +1456,11 @@
                 const balloon = balloons.pop();
                 scene.remove(balloon);
             }
+            clearParticles();
+
+            if (bgMusic.isPlaying) {
+                bgMusic.stop();
+            }
             
             // Remove event listeners
             window.removeEventListener('blur', pauseGame);
@@ -1277,6 +1470,7 @@
         // Restart the game
         function restartGame() {
             document.getElementById('game-over-screen').classList.add('hidden');
+            document.getElementById('new-high-score').style.display = 'none';
             startGame();
         }
 
@@ -1454,9 +1648,18 @@
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
+
+            const now = performance.now();
+            const delta = Math.min((now - lastFrameTime) / 1000, 0.05);
+            lastFrameTime = now;
             
             // Skip updates if game is paused
-            if (gamePaused) return;
+            if (gamePaused) {
+                renderer.render(scene, camera);
+                return;
+            }
+
+            updateParticles(delta);
             
             // Update custom controls if they're being used
             if (controls.update && typeof controls.update === 'function') {
@@ -1496,17 +1699,18 @@
             document.getElementById('score').textContent = score;
 
             if (balloonType === 'SPECIAL') {
-                if (specialPopSound.buffer) specialPopSound.play();
+                playSound(specialPopSound);
                 showPointsIndicator(earnedPoints, balloon.position, '#ffeb3b');
             } else if (balloonType === 'PENALTY') {
-                if (shootSound.buffer) {
+                if (audioEnabled && shootSound.buffer) {
                     const penaltySound = shootSound.clone();
+                    penaltySound.setVolume(0.5);
                     penaltySound.setPlaybackRate(0.5);
                     penaltySound.play();
                 }
                 showPointsIndicator(earnedPoints, balloon.position, '#ff0000', true);
             } else {
-                if (popSound.buffer) popSound.play();
+                playSound(popSound);
                 showPointsIndicator(earnedPoints, balloon.position, '#ffffff');
             }
 
@@ -1568,31 +1772,23 @@
             const particleCount = type === 'SPECIAL' ? 20 : 10;
             const color = type === 'SPECIAL' ? 0xffeb3b : type === 'PENALTY' ? 0x000000 : 0xff4081;
             
-            // Create particles
             for (let i = 0; i < particleCount; i++) {
                 const particleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
                 const particleMaterial = new THREE.MeshBasicMaterial({ color: color });
                 const particle = new THREE.Mesh(particleGeometry, particleMaterial);
                 
-                // Position at the balloon's position
                 particle.position.copy(position);
-                
-                // Give random velocity in all directions
                 particle.userData = {
                     velocity: new THREE.Vector3(
                         (Math.random() - 0.5) * 0.2,
-                        (Math.random() - 0.5) * 0.2,
+                        Math.random() * 0.15,
                         (Math.random() - 0.5) * 0.2
                     ),
                     lifetime: 0
                 };
                 
                 scene.add(particle);
-                
-                // Remove after a short time
-                setTimeout(() => {
-                    scene.remove(particle);
-                }, 500);
+                particles.push(particle);
             }
         }
     </script>
