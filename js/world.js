@@ -15,6 +15,7 @@ import {
     createWoodFloorTexture,
     debugLog,
 } from './utils.js';
+import { isTouchDevice } from './touch.js';
 
 const PARTICLE_GEOMETRY = new THREE.SphereGeometry(0.1, 8, 8);
 const PARTICLE_MATERIALS = {
@@ -89,12 +90,17 @@ export function initRenderer() {
 
     state.renderer.setSize(window.innerWidth, window.innerHeight);
     state.renderer.shadowMap.enabled = true;
-    document.body.appendChild(state.renderer.domElement);
+
+    const mount = document.getElementById('game-canvas') ?? document.body;
+    mount.appendChild(state.renderer.domElement);
 }
 
 export function setupControls() {
     try {
-        state.controls = new THREE.PointerLockControls(state.camera, document.body);
+        const controlSurface = state.isTouchDevice || isTouchDevice()
+            ? state.renderer.domElement
+            : document.body;
+        state.controls = new THREE.PointerLockControls(state.camera, controlSurface);
         debugLog('Using THREE.PointerLockControls');
     } catch (error) {
         console.error('Error creating PointerLockControls:', error);

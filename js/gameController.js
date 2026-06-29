@@ -579,6 +579,7 @@ export function initGame() {
     updateAchievementsDisplay();
 
     initRenderer();
+    syncMenuState();
     setupControls();
 
     addManagedListener(document, 'pointerlockchange', onPointerLockChange, false);
@@ -592,11 +593,6 @@ export function initGame() {
 
     addManagedListener(window, 'resize', onWindowResize, false);
     addManagedListener(document, 'click', onShoot);
-
-    registerTouchCleanup(setupTouchControls(state.renderer.domElement, {
-        onAim: applyTouchAim,
-        onShoot: shoot,
-    }));
 
     const onVisibility = () => onVisibilityChange();
     addManagedListener(document, 'visibilitychange', onVisibility);

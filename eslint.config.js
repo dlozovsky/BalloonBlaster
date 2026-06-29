@@ -15,6 +15,7 @@ export default [
                 ...globals.browser,
                 ...globals.node,
                 THREE: 'readonly',
+                __bbStartGame: 'readonly',
             },
         },
         rules: {

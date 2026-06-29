@@ -4,22 +4,21 @@ body {
     overflow: hidden;
     font-family: Arial, sans-serif;
 }
-canvas {
-    display: block;
+#game-canvas {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     z-index: 0;
-    touch-action: none;
-}
-
-body.menu-open canvas {
     pointer-events: none;
 }
 
-body.game-active.touch-device canvas {
+#game-canvas canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+body.game-active.touch-device #game-canvas {
     pointer-events: auto;
 }
 
@@ -31,6 +30,24 @@ body.game-active.touch-device canvas {
     height: 100%;
     pointer-events: none;
     z-index: 10;
+}
+
+body.menu-open #ui-container {
+    pointer-events: auto;
+}
+
+body.menu-open #score-container,
+body.menu-open #combo-container,
+body.menu-open #multiplier-container,
+body.menu-open #level-container,
+body.menu-open #timer-container,
+body.menu-open #mute-button,
+body.menu-open #mobile-pause-button,
+body.menu-open #fps-container,
+body.menu-open #mobile-hint,
+body.menu-open #audio-blocked-banner,
+body.menu-open #crosshair {
+    pointer-events: none;
 }
 #crosshair {
     position: absolute;
@@ -58,6 +75,11 @@ body.game-active.touch-device canvas {
     left: 0;
     top: 9px;
 }
+
+body.menu-open #crosshair {
+    visibility: hidden;
+}
+
 #score-container {
     position: absolute;
     top: 20px;
@@ -163,11 +185,13 @@ body.game-active.touch-device canvas {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 100;
+    z-index: 200;
     pointer-events: auto;
     touch-action: manipulation;
     -webkit-overflow-scrolling: touch;
     overflow-y: auto;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    box-sizing: border-box;
 }
 #game-title {
     color: white;
@@ -224,6 +248,8 @@ body.game-active.touch-device canvas {
     color: white;
     text-align: center;
     pointer-events: auto;
+    z-index: 200;
+    touch-action: manipulation;
 }
 #game-over-title {
     font-size: 50px;
@@ -264,7 +290,7 @@ button:hover {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 100;
+    z-index: 200;
     pointer-events: auto;
     touch-action: manipulation;
     display: none;
