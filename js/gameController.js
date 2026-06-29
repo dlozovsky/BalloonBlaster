@@ -39,6 +39,7 @@ import {
     registerTouchCleanup,
     teardownGameplay,
 } from './lifecycle.js';
+import { initMenuState, syncMenuState } from './menuState.js';
 import { initStorage, saveHighScoreIfNeeded, saveSurvivalHighScoreIfNeeded } from './storage.js';
 import { loadAudioPreference, state } from './state.js';
 import {
@@ -362,9 +363,26 @@ function endGame(title, message) {
     clearBalloons();
     clearParticles();
     setMobileUiVisible(false);
+    syncMenuState();
 }
 
 export function startGame() {
+    try {
+        startGameInternal();
+    } catch (error) {
+        console.error('Failed to start game:', error);
+        state.gameActive = false;
+        state.gamePaused = false;
+        document.getElementById('start-screen')?.classList.remove('hidden');
+        showFatalError(
+            'Unable to start the game.',
+            error instanceof Error ? error.message : 'Unknown error',
+        );
+        syncMenuState();
+    }
+}
+
+function startGameInternal() {
     teardownGameplay();
 
     state.gameMode = getSelectedGameMode();
@@ -421,6 +439,7 @@ export function startGame() {
             onShoot: shoot,
         }));
         setMobileUiVisible(true);
+        syncMenuState();
         return;
     }
 
@@ -428,6 +447,7 @@ export function startGame() {
         document.body.mozRequestPointerLock ||
         document.body.webkitRequestPointerLock;
     document.body.requestPointerLock?.();
+    syncMenuState();
 }
 
 export function pauseGame() {
@@ -440,6 +460,7 @@ export function pauseGame() {
     state.levelEndAt = null;
     stopLevelTimer();
     document.getElementById('pause-screen').style.display = 'flex';
+    syncMenuState();
 
     if (!state.isTouchDevice) {
         document.exitPointerLock = document.exitPointerLock ||
@@ -456,6 +477,7 @@ export function resumeGame() {
 
     state.gamePaused = false;
     document.getElementById('pause-screen').style.display = 'none';
+    syncMenuState();
     startLevelTimer();
     void resumeAudioOnGesture();
     void playBackgroundMusic();
@@ -493,6 +515,7 @@ export function quitGame() {
     clearParticles();
     stopBackgroundMusic();
     setMobileUiVisible(false);
+    syncMenuState();
 }
 
 export function restartGame() {
@@ -583,4 +606,5 @@ export function initGame() {
     }
     animate();
     applyAudioState();
+    initMenuState();
 }

@@ -25,15 +25,38 @@ setFatalErrorRetryHandler(() => {
 setupGlobalErrorHandlers();
 window.addEventListener('beforeunload', teardownAll);
 
+function bindActionButton(element, handler) {
+    if (!element) {
+        return;
+    }
+
+    let lastInvokeAt = 0;
+
+    const invoke = (event) => {
+        const now = Date.now();
+        if (now - lastInvokeAt < 400) {
+            event.preventDefault();
+            return;
+        }
+        lastInvokeAt = now;
+        event.preventDefault();
+        event.stopPropagation();
+        handler(event);
+    };
+
+    element.addEventListener('click', invoke);
+    element.addEventListener('touchend', invoke, { passive: false });
+}
+
 function bindUiControls() {
-    document.getElementById('start-button').addEventListener('click', startGame);
-    document.getElementById('restart-button').addEventListener('click', restartGame);
-    document.getElementById('resume-button').addEventListener('click', resumeGame);
-    document.getElementById('pause-quit-button').addEventListener('click', quitGame);
-    document.getElementById('mute-button').addEventListener('click', toggleAudio);
-    document.getElementById('mobile-pause-button').addEventListener('click', pauseGame);
-    document.getElementById('share-button').addEventListener('click', shareScore);
-    document.getElementById('download-card-button').addEventListener('click', downloadScoreCard);
+    bindActionButton(document.getElementById('start-button'), startGame);
+    bindActionButton(document.getElementById('restart-button'), restartGame);
+    bindActionButton(document.getElementById('resume-button'), resumeGame);
+    bindActionButton(document.getElementById('pause-quit-button'), quitGame);
+    bindActionButton(document.getElementById('mute-button'), toggleAudio);
+    bindActionButton(document.getElementById('mobile-pause-button'), pauseGame);
+    bindActionButton(document.getElementById('share-button'), shareScore);
+    bindActionButton(document.getElementById('download-card-button'), downloadScoreCard);
 }
 
 bindUiControls();
