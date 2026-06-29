@@ -1,5 +1,6 @@
 import { CONFIG } from './config.js';
-import { AUDIO_ENABLED_KEY, COMBO_RESET_DELAY, DEFAULT_DIFFICULTY, MAX_LEVEL, SURVIVAL_DURATION } from './constants.js';
+import { COMBO_RESET_DELAY, DEFAULT_DIFFICULTY, MAX_LEVEL, SURVIVAL_DURATION } from './constants.js';
+import { getAudioPreference } from './storage.js';
 
 export function createInitialState() {
     return {
@@ -22,6 +23,7 @@ export function createInitialState() {
         comboResetDelay: COMBO_RESET_DELAY,
         currentLevel: 1,
         levelTimer: null,
+        levelEndAt: null,
         targetScore: 0,
         maxLevel: MAX_LEVEL,
         levelScoreAtStart: 0,
@@ -59,9 +61,5 @@ export function resetComboState() {
 }
 
 export function loadAudioPreference() {
-    const stored = localStorage.getItem(AUDIO_ENABLED_KEY);
-    if (stored === null) {
-        return CONFIG.audioEnabled !== false;
-    }
-    return stored === 'true';
+    return getAudioPreference(CONFIG.audioEnabled !== false);
 }

@@ -17,13 +17,28 @@ import {
 } from './utils.js';
 
 export function initRenderer() {
+    if (typeof THREE === 'undefined') {
+        throw new Error('Three.js failed to load.');
+    }
+
+    const testCanvas = document.createElement('canvas');
+    const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+    if (!gl) {
+        throw new Error('WebGL is not available in this browser.');
+    }
+
     state.scene = new THREE.Scene();
     state.scene.background = new THREE.Color(0x87ceeb);
 
     state.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     state.camera.position.set(0, 1.6, 0);
 
-    state.renderer = new THREE.WebGLRenderer({ antialias: true });
+    try {
+        state.renderer = new THREE.WebGLRenderer({ antialias: true });
+    } catch (error) {
+        throw new Error(`Failed to create WebGL renderer: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
+
     state.renderer.setSize(window.innerWidth, window.innerHeight);
     state.renderer.shadowMap.enabled = true;
     document.body.appendChild(state.renderer.domElement);

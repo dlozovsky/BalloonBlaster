@@ -4,6 +4,10 @@ export const ROOM_DEPTH = 20;
 export const MAX_LEVEL = 10;
 export const COMBO_RESET_DELAY = 2000;
 export const PARTICLE_LIFETIME = 0.5;
+export const SAVE_DATA_KEY = 'balloonBlasterSave';
+export const SAVE_DATA_VERSION = 1;
+
+/** @deprecated Legacy keys — migrated into SAVE_DATA_KEY on first load */
 export const HIGH_SCORE_KEY = 'balloonBlasterHighScore';
 export const SURVIVAL_HIGH_SCORE_KEY = 'balloonBlasterSurvivalHighScore';
 export const AUDIO_ENABLED_KEY = 'balloonBlasterAudioEnabled';

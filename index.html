@@ -17,6 +17,9 @@
         <button id="mobile-pause-button" type="button" class="hidden" aria-label="Pause game">⏸</button>
         <div id="fps-container" class="hidden">FPS: 0</div>
         <div id="mobile-hint" class="hidden">Drag to aim · Tap to shoot</div>
+        <div id="audio-blocked-banner" class="hidden" role="status">
+            Sound is blocked — tap here to enable audio
+        </div>
 
         <div id="crosshair" aria-hidden="true"></div>
 
@@ -56,6 +59,15 @@
             <button id="resume-button" type="button">RESUME GAME</button>
             <a id="pause-help-button" href="help.html" target="_blank">HOW TO PLAY</a>
             <button id="pause-quit-button" type="button">QUIT GAME</button>
+        </div>
+    </div>
+
+    <div id="fatal-error-screen" class="hidden" role="alertdialog" aria-labelledby="fatal-error-title">
+        <div class="fatal-error-panel">
+            <h1 id="fatal-error-title">Unable to start game</h1>
+            <p id="fatal-error-message"></p>
+            <p id="fatal-error-details"></p>
+            <button id="fatal-error-retry" type="button">Try again</button>
         </div>
     </div>
 

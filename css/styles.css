@@ -518,3 +518,71 @@ body.reduced-motion.screen-shake {
 #start-screen input {
     pointer-events: auto;
 }
+
+#audio-blocked-banner {
+    position: absolute;
+    top: 140px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: #ffeb3b;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 100;
+}
+
+#fatal-error-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.92);
+    z-index: 3000;
+    pointer-events: auto;
+}
+
+#fatal-error-screen.hidden {
+    display: none;
+}
+
+.fatal-error-panel {
+    max-width: 520px;
+    margin: 20px;
+    padding: 28px;
+    border-radius: 12px;
+    background: #1a1a2e;
+    color: white;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.fatal-error-panel h1 {
+    margin: 0 0 12px;
+    color: #ff4081;
+}
+
+.fatal-error-panel p {
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+
+#fatal-error-details {
+    font-size: 14px;
+    color: #ccc;
+}
+
+#fatal-error-retry {
+    margin-top: 8px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    background: #ff4081;
+    color: white;
+    cursor: pointer;
+}

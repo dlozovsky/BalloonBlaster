@@ -4,10 +4,12 @@ import {
     playBackgroundMusic,
     playPenaltySound,
     playSound,
+    resumeAudioOnGesture,
     setupAudio,
+    setupAudioBanner,
     stopBackgroundMusic,
-    toggleAudio,
 } from './audio.js';
+import { checkCapabilities } from './capability.js';
 import { CONFIG } from './config.js';
 import { DOUBLE_SCORE_DURATION_MS } from './constants.js';
 import {
@@ -16,8 +18,11 @@ import {
     showPowerUpMessage,
     triggerScreenShake,
 } from './effects.js';
+import { showFatalError } from './errors.js';
 import {
     calculateEarnedPoints,
+    computeTimeRemaining,
+    createTimerDeadline,
     getActiveScoreMultiplier,
     getDifficultyForLevel,
     getPointsEarnedInLevel,
@@ -28,9 +33,13 @@ import {
     nextComboState,
 } from './gameLogic.js';
 import {
-    saveHighScoreIfNeeded,
-    saveSurvivalHighScoreIfNeeded,
-} from './storage.js';
+    addGameplayListener,
+    addManagedListener,
+    clearGameplayTimers,
+    registerTouchCleanup,
+    teardownGameplay,
+} from './lifecycle.js';
+import { initStorage, saveHighScoreIfNeeded, saveSurvivalHighScoreIfNeeded } from './storage.js';
 import { loadAudioPreference, state } from './state.js';
 import {
     applyConfig,
@@ -63,7 +72,7 @@ import {
     updateParticles,
 } from './world.js';
 
-let removeTouchControls = null;
+let animationFrameId = null;
 
 function resetLevelStats() {
     state.hitsThisLevel = 0;
@@ -144,7 +153,7 @@ function refreshScoreMultiplier() {
 function handlePowerUpHit(balloon) {
     activateDoubleScore();
     updateCombo();
-    playSound(state.specialPopSound);
+    void playSound(state.specialPopSound);
     createPopEffect(balloon.position, 'SPECIAL');
     removeBalloon(balloon);
 }
@@ -181,13 +190,13 @@ function hitBalloon(balloon) {
     updateScoreDisplay();
 
     if (balloonType === 'SPECIAL') {
-        playSound(state.specialPopSound);
+        void playSound(state.specialPopSound);
         showPointsIndicator(earnedPoints, balloon.position, state.camera, '#ffeb3b');
     } else if (balloonType === 'PENALTY') {
-        playPenaltySound();
+        void playPenaltySound();
         showPointsIndicator(earnedPoints, balloon.position, state.camera, '#ff0000', true);
     } else {
-        playSound(state.popSound);
+        void playSound(state.popSound);
         showPointsIndicator(earnedPoints, balloon.position, state.camera, '#ffffff');
     }
 
@@ -200,7 +209,7 @@ function shoot() {
         return;
     }
 
-    playSound(state.shootSound);
+    void playSound(state.shootSound);
 
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(new THREE.Vector2(0, 0), state.camera);
@@ -228,49 +237,80 @@ function checkLevelAchievements() {
     }
 }
 
-function startLevelTimer() {
-    if (state.levelTimer) {
-        clearInterval(state.levelTimer);
+function syncTimerFromDeadline() {
+    if (!state.levelEndAt) {
+        return;
     }
 
-    state.levelTimer = setInterval(() => {
-        if (state.gamePaused) {
-            return;
-        }
-
-        state.timeRemaining -= 1;
+    const now = Date.now();
+    const remaining = computeTimeRemaining(state.levelEndAt, now);
+    if (remaining !== state.timeRemaining) {
+        state.timeRemaining = remaining;
         updateTimerDisplay();
-        refreshScoreMultiplier();
+    }
+    refreshScoreMultiplier();
 
-        if (state.gameMode === 'survival') {
-            state.survivalElapsed = state.survivalDuration - state.timeRemaining;
-            state.difficultyParams = getSurvivalDifficulty(state.survivalElapsed);
+    if (state.gameMode === 'survival') {
+        state.survivalElapsed = state.survivalDuration - state.timeRemaining;
+        state.difficultyParams = getSurvivalDifficulty(state.survivalElapsed);
+    }
+}
+
+function handleTimerExpired() {
+    if (state.gameMode === 'survival') {
+        endGame('TIME UP!', `Survival complete! You scored ${state.score} points.`);
+        return;
+    }
+
+    const pointsEarnedInLevel = getPointsEarnedInLevel(state.score, state.levelScoreAtStart);
+
+    if (hasMetLevelTarget(pointsEarnedInLevel, state.targetScore)) {
+        if (state.currentLevel < state.maxLevel) {
+            nextLevel();
+        } else {
+            endGame('CONGRATULATIONS!', `You completed all ${state.maxLevel} levels with a score of ${state.score}!`);
         }
+    } else {
+        endGame(
+            'LEVEL FAILED',
+            `You needed ${state.targetScore - pointsEarnedInLevel} more points to advance to level ${state.currentLevel + 1}. Final score: ${state.score}`,
+        );
+    }
+}
 
-        if (state.timeRemaining <= 0) {
-            clearInterval(state.levelTimer);
+function onTimerTick() {
+    if (!state.gameActive || state.gamePaused) {
+        return;
+    }
 
-            if (state.gameMode === 'survival') {
-                endGame('TIME UP!', `Survival complete! You scored ${state.score} points.`);
-                return;
-            }
+    syncTimerFromDeadline();
 
-            const pointsEarnedInLevel = getPointsEarnedInLevel(state.score, state.levelScoreAtStart);
+    if (state.timeRemaining <= 0) {
+        stopLevelTimer();
+        handleTimerExpired();
+    }
+}
 
-            if (hasMetLevelTarget(pointsEarnedInLevel, state.targetScore)) {
-                if (state.currentLevel < state.maxLevel) {
-                    nextLevel();
-                } else {
-                    endGame('CONGRATULATIONS!', `You completed all ${state.maxLevel} levels with a score of ${state.score}!`);
-                }
-            } else {
-                endGame(
-                    'LEVEL FAILED',
-                    `You needed ${state.targetScore - pointsEarnedInLevel} more points to advance to level ${state.currentLevel + 1}. Final score: ${state.score}`,
-                );
-            }
-        }
-    }, 1000);
+function stopLevelTimer() {
+    clearGameplayTimers();
+}
+
+function startLevelTimer() {
+    stopLevelTimer();
+    state.levelEndAt = createTimerDeadline(Date.now(), state.timeRemaining);
+    state.levelTimer = setInterval(onTimerTick, 250);
+}
+
+function onVisibilityChange() {
+    if (document.visibilityState !== 'visible' || !state.gameActive || state.gamePaused) {
+        return;
+    }
+
+    syncTimerFromDeadline();
+    if (state.timeRemaining <= 0) {
+        stopLevelTimer();
+        handleTimerExpired();
+    }
 }
 
 function nextLevel() {
@@ -285,23 +325,15 @@ function nextLevel() {
     clearBalloons();
     spawnBalloons();
     showLevelMessage();
-    playSound(state.specialPopSound);
+    void playSound(state.specialPopSound);
     startLevelTimer();
-}
-
-function removeGameplayListeners() {
-    window.removeEventListener('blur', pauseGame);
-    document.removeEventListener('keydown', handleKeyDown);
 }
 
 function endGame(title, message) {
     state.gameActive = false;
     stopBackgroundMusic();
-
-    if (state.levelTimer) {
-        clearInterval(state.levelTimer);
-        state.levelTimer = null;
-    }
+    stopLevelTimer();
+    teardownGameplay();
 
     if (title === 'CONGRATULATIONS!') {
         unlockAchievement('champion');
@@ -330,10 +362,11 @@ function endGame(title, message) {
     clearBalloons();
     clearParticles();
     setMobileUiVisible(false);
-    removeGameplayListeners();
 }
 
 export function startGame() {
+    teardownGameplay();
+
     state.gameMode = getSelectedGameMode();
     state.isTouchDevice = isTouchDevice();
     state.reducedMotion = CONFIG.reducedMotion || detectReducedMotion();
@@ -373,15 +406,20 @@ export function startGame() {
     state.gameActive = true;
     state.gamePaused = false;
 
-    playBackgroundMusic();
+    void resumeAudioOnGesture();
+    void playBackgroundMusic();
     spawnBalloons();
     showLevelMessage();
     startLevelTimer();
 
-    window.addEventListener('blur', pauseGame);
-    document.addEventListener('keydown', handleKeyDown);
+    addGameplayListener(window, 'blur', pauseGame);
+    addGameplayListener(document, 'keydown', handleKeyDown);
 
     if (state.isTouchDevice) {
+        registerTouchCleanup(setupTouchControls(state.renderer.domElement, {
+            onAim: applyTouchAim,
+            onShoot: shoot,
+        }));
         setMobileUiVisible(true);
         return;
     }
@@ -397,8 +435,10 @@ export function pauseGame() {
         return;
     }
 
+    syncTimerFromDeadline();
     state.gamePaused = true;
-    clearInterval(state.levelTimer);
+    state.levelEndAt = null;
+    stopLevelTimer();
     document.getElementById('pause-screen').style.display = 'flex';
 
     if (!state.isTouchDevice) {
@@ -417,7 +457,8 @@ export function resumeGame() {
     state.gamePaused = false;
     document.getElementById('pause-screen').style.display = 'none';
     startLevelTimer();
-    playBackgroundMusic();
+    void resumeAudioOnGesture();
+    void playBackgroundMusic();
 
     if (!state.isTouchDevice) {
         document.body.requestPointerLock?.();
@@ -443,7 +484,7 @@ function handleKeyDown(event) {
 }
 
 export function quitGame() {
-    clearInterval(state.levelTimer);
+    teardownGameplay();
     state.gameActive = false;
     state.gamePaused = false;
     document.getElementById('pause-screen').style.display = 'none';
@@ -452,7 +493,6 @@ export function quitGame() {
     clearParticles();
     stopBackgroundMusic();
     setMobileUiVisible(false);
-    removeGameplayListeners();
 }
 
 export function restartGame() {
@@ -468,7 +508,11 @@ function onPointerLockChange() {
 }
 
 function animate() {
-    requestAnimationFrame(animate);
+    animationFrameId = requestAnimationFrame(animate);
+
+    if (!state.renderer || !state.scene || !state.camera) {
+        return;
+    }
 
     const now = performance.now();
     const delta = Math.min((now - state.lastFrameTime) / 1000, 0.05);
@@ -496,6 +540,14 @@ function animate() {
 }
 
 export function initGame() {
+    initStorage();
+
+    const capabilities = checkCapabilities();
+    if (!capabilities.ok) {
+        showFatalError(capabilities.reason, capabilities.details);
+        return;
+    }
+
     applyConfig();
     state.audioEnabled = loadAudioPreference();
     state.reducedMotion = CONFIG.reducedMotion || detectReducedMotion();
@@ -506,29 +558,29 @@ export function initGame() {
     initRenderer();
     setupControls();
 
-    document.addEventListener('pointerlockchange', onPointerLockChange, false);
-    document.addEventListener('mozpointerlockchange', onPointerLockChange, false);
-    document.addEventListener('webkitpointerlockchange', onPointerLockChange, false);
+    addManagedListener(document, 'pointerlockchange', onPointerLockChange, false);
+    addManagedListener(document, 'mozpointerlockchange', onPointerLockChange, false);
+    addManagedListener(document, 'webkitpointerlockchange', onPointerLockChange, false);
 
     setupAudio();
+    setupAudioBanner();
     addLights();
     createRoom();
 
-    window.addEventListener('resize', onWindowResize, false);
-    document.addEventListener('click', onShoot);
+    addManagedListener(window, 'resize', onWindowResize, false);
+    addManagedListener(document, 'click', onShoot);
 
-    removeTouchControls = setupTouchControls(state.renderer.domElement, {
+    registerTouchCleanup(setupTouchControls(state.renderer.domElement, {
         onAim: applyTouchAim,
         onShoot: shoot,
-    });
+    }));
 
+    const onVisibility = () => onVisibilityChange();
+    addManagedListener(document, 'visibilitychange', onVisibility);
+
+    if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+    }
     animate();
-
-    document.getElementById('start-button').addEventListener('click', startGame);
-    document.getElementById('restart-button').addEventListener('click', restartGame);
-    document.getElementById('resume-button').addEventListener('click', resumeGame);
-    document.getElementById('pause-quit-button').addEventListener('click', quitGame);
-    document.getElementById('mute-button').addEventListener('click', toggleAudio);
-    document.getElementById('mobile-pause-button').addEventListener('click', pauseGame);
     applyAudioState();
 }

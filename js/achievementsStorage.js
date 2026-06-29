@@ -1,21 +1,9 @@
-import { ACHIEVEMENTS_KEY } from './constants.js';
 import { ACHIEVEMENTS } from './achievements.js';
+import { getStoredAchievements, persistAchievements } from './storage.js';
 import { showAchievementToast } from './ui.js';
 
 export function getUnlockedAchievements() {
-    try {
-        const stored = localStorage.getItem(ACHIEVEMENTS_KEY);
-        if (!stored) {
-            return new Set();
-        }
-        return new Set(JSON.parse(stored));
-    } catch {
-        return new Set();
-    }
-}
-
-function saveUnlockedAchievements(unlocked) {
-    localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify([...unlocked]));
+    return getStoredAchievements();
 }
 
 export function unlockAchievement(achievementId) {
@@ -25,7 +13,7 @@ export function unlockAchievement(achievementId) {
     }
 
     unlocked.add(achievementId);
-    saveUnlockedAchievements(unlocked);
+    persistAchievements(unlocked);
     showAchievementToast(ACHIEVEMENTS[achievementId]);
     updateAchievementsDisplay();
     return true;

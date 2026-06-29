@@ -3,6 +3,8 @@ import { persistAudioPreference } from './storage.js';
 import { debugLog } from './utils.js';
 import { updateMuteButton } from './ui.js';
 
+let audioBlocked = false;
+
 function createLaserSound(audioContext) {
     const sampleRate = audioContext.sampleRate;
     const duration = 0.3;
@@ -110,6 +112,81 @@ function createBackgroundMusic(audioContext) {
     return buffer;
 }
 
+function showAudioBanner() {
+    document.getElementById('audio-blocked-banner')?.classList.remove('hidden');
+}
+
+function hideAudioBanner() {
+    document.getElementById('audio-blocked-banner')?.classList.add('hidden');
+}
+
+function markAudioBlocked() {
+    audioBlocked = true;
+    showAudioBanner();
+}
+
+function markAudioReady() {
+    audioBlocked = false;
+    hideAudioBanner();
+}
+
+export function isAudioBlocked() {
+    return audioBlocked;
+}
+
+export async function resumeAudioOnGesture() {
+    const context = state.listener?.context;
+    if (!context) {
+        return false;
+    }
+
+    if (context.state === 'suspended') {
+        try {
+            await context.resume();
+        } catch {
+            markAudioBlocked();
+            return false;
+        }
+    }
+
+    if (context.state === 'running') {
+        markAudioReady();
+        if (state.audioEnabled && state.gameActive && !state.gamePaused) {
+            playBackgroundMusic();
+        }
+        return true;
+    }
+
+    markAudioBlocked();
+    return false;
+}
+
+async function ensureAudioContextRunning() {
+    const context = state.listener?.context;
+    if (!context) {
+        return false;
+    }
+
+    if (context.state === 'running') {
+        markAudioReady();
+        return true;
+    }
+
+    if (context.state === 'suspended') {
+        try {
+            await context.resume();
+            markAudioReady();
+            return true;
+        } catch {
+            markAudioBlocked();
+            return false;
+        }
+    }
+
+    markAudioBlocked();
+    return false;
+}
+
 export function setupAudio() {
     state.listener = new THREE.AudioListener();
     state.camera.add(state.listener);
@@ -129,6 +206,10 @@ export function setupAudio() {
     state.bgMusic.setBuffer(createBackgroundMusic(audioContext));
     state.bgMusic.setLoop(true);
     state.bgMusic.setVolume(0.3);
+
+    if (audioContext.state === 'suspended') {
+        markAudioBlocked();
+    }
 
     applyAudioState();
     debugLog('Audio setup complete');
@@ -156,34 +237,77 @@ export function toggleAudio() {
     state.audioEnabled = !state.audioEnabled;
     persistAudioPreference(state.audioEnabled);
     applyAudioState();
+    if (state.audioEnabled) {
+        void resumeAudioOnGesture();
+    }
 }
 
-export function playSound(sound) {
+export async function playSound(sound) {
     if (!state.audioEnabled || !sound?.buffer) {
         return;
     }
-    sound.play();
+
+    const ready = await ensureAudioContextRunning();
+    if (!ready) {
+        return;
+    }
+
+    try {
+        if (sound.isPlaying) {
+            sound.stop();
+        }
+        sound.play();
+    } catch {
+        markAudioBlocked();
+    }
 }
 
-export function playBackgroundMusic() {
+export async function playBackgroundMusic() {
     if (!state.audioEnabled || !state.bgMusic?.buffer || state.bgMusic.isPlaying) {
         return;
     }
-    state.bgMusic.play();
+
+    const ready = await ensureAudioContextRunning();
+    if (!ready) {
+        return;
+    }
+
+    try {
+        state.bgMusic.play();
+    } catch {
+        markAudioBlocked();
+    }
 }
 
-export function playPenaltySound() {
+export async function playPenaltySound() {
     if (!state.audioEnabled || !state.shootSound?.buffer) {
         return;
     }
-    const penaltySound = state.shootSound.clone();
-    penaltySound.setVolume(0.5);
-    penaltySound.setPlaybackRate(0.5);
-    penaltySound.play();
+
+    const ready = await ensureAudioContextRunning();
+    if (!ready) {
+        return;
+    }
+
+    try {
+        const penaltySound = state.shootSound.clone();
+        penaltySound.setVolume(0.5);
+        penaltySound.setPlaybackRate(0.5);
+        penaltySound.play();
+    } catch {
+        markAudioBlocked();
+    }
 }
 
 export function stopBackgroundMusic() {
     if (state.bgMusic?.isPlaying) {
         state.bgMusic.stop();
     }
+}
+
+export function setupAudioBanner() {
+    const banner = document.getElementById('audio-blocked-banner');
+    banner?.addEventListener('click', () => {
+        void resumeAudioOnGesture();
+    });
 }

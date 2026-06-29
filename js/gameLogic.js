@@ -87,3 +87,11 @@ export function maybePromoteToPowerUp(type, level, randomValue, minLevel, chance
     }
     return type;
 }
+
+export function createTimerDeadline(nowMs, secondsRemaining) {
+    return nowMs + secondsRemaining * 1000;
+}
+
+export function computeTimeRemaining(endAtMs, nowMs) {
+    return Math.max(0, Math.ceil((endAtMs - nowMs) / 1000));
+}
