@@ -122,6 +122,38 @@ test.describe('Balloon Blaster smoke tests', () => {
         await context.close();
     });
 
+    test('popping a balloon increases the score in test mode', async ({ page }) => {
+        await page.goto('/?test=1');
+        await page.locator('#start-button').click();
+        await page.waitForFunction(() => window.__bbTest?.getBalloonCount() > 0);
+
+        await expect(page.locator('#score')).toHaveText('0');
+        await page.evaluate(() => window.__bbTest.hitFirstBalloon());
+        await expect(page.locator('#score')).not.toHaveText('0');
+    });
+
+    test('test hooks are only enabled with ?test=1', async ({ page }) => {
+        await page.goto('/');
+        await page.locator('#start-button').click();
+        await page.waitForTimeout(500);
+
+        const hasHooks = await page.evaluate(() => typeof window.__bbTest !== 'undefined');
+        expect(hasHooks).toBe(false);
+    });
+
+    test('quit from pause returns to the start screen', async ({ page }) => {
+        await page.goto('/');
+        await page.locator('#start-button').click();
+        await expect(page.locator('#start-screen')).toBeHidden();
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#pause-screen')).toBeVisible();
+
+        await page.locator('#pause-quit-button').click();
+        await expect(page.locator('#start-screen')).toBeVisible();
+        await expect(page.locator('#score')).toHaveText('0');
+    });
+
     test('loads on iPhone even if PointerLockControls is missing', async ({ browser }) => {
         const context = await browser.newContext({
             viewport: { width: 390, height: 844 },

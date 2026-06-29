@@ -131,6 +131,10 @@ GitHub Actions runs on every push and pull request:
 
 Playwright reports are uploaded as artifacts when e2e jobs fail.
 
+### Pre-commit
+
+`simple-git-hooks` runs `npm run check` before each commit when hooks are installed (`npm install` runs `prepare` automatically).
+
 ## License
 
 See repository for license details.
