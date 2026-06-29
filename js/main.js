@@ -1,5 +1,5 @@
-import { initGame, pauseGame, quitGame, restartGame, resumeGame, startGame } from './gameController.js';
-import { toggleAudio } from './audio.js';
+import { initGame, pauseGame, quitGame, restartGame, resumeGame, shoot, startGame } from './gameController.js';
+import { resumeAudioOnGesture, toggleAudio } from './audio.js';
 import { hideFatalError, setFatalErrorRetryHandler, setupGlobalErrorHandlers, showFatalError } from './errors.js';
 import { teardownAll } from './lifecycle.js';
 import { initMenuState } from './menuState.js';
@@ -64,6 +64,10 @@ function bindUiControls() {
     bindActionButton(document.getElementById('pause-quit-button'), quitGame);
     bindActionButton(document.getElementById('mute-button'), toggleAudio);
     bindActionButton(document.getElementById('mobile-pause-button'), pauseGame);
+    bindActionButton(document.getElementById('mobile-fire-button'), () => {
+        void resumeAudioOnGesture();
+        shoot();
+    });
     bindActionButton(document.getElementById('share-button'), shareScore);
     bindActionButton(document.getElementById('download-card-button'), downloadScoreCard);
 

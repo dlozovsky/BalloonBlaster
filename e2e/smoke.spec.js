@@ -69,6 +69,7 @@ test.describe('Balloon Blaster smoke tests', () => {
         await expect(page.locator('#start-screen')).toBeHidden({ timeout: 10_000 });
         await expect(page.locator('#score')).toHaveText('0');
         await expect(page.locator('#mobile-hint')).toBeVisible();
+        await expect(page.locator('#mobile-fire-button')).toBeVisible();
 
         await context.close();
     });

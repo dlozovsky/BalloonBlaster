@@ -120,9 +120,15 @@ function hideAudioBanner() {
     document.getElementById('audio-blocked-banner')?.classList.add('hidden');
 }
 
-function markAudioBlocked() {
+function markAudioBlocked(showBanner = true) {
     audioBlocked = true;
-    showAudioBanner();
+    if (!state.audioEnabled) {
+        hideAudioBanner();
+        return;
+    }
+    if (showBanner && !state.gameActive) {
+        showAudioBanner();
+    }
 }
 
 function markAudioReady() {
@@ -144,7 +150,7 @@ export async function resumeAudioOnGesture() {
         try {
             await context.resume();
         } catch {
-            markAudioBlocked();
+            markAudioBlocked(!state.gameActive);
             return false;
         }
     }
@@ -157,8 +163,14 @@ export async function resumeAudioOnGesture() {
         return true;
     }
 
-    markAudioBlocked();
+    markAudioBlocked(!state.gameActive);
     return false;
+}
+
+export function onGameplayStarted() {
+    if (state.gameActive) {
+        hideAudioBanner();
+    }
 }
 
 async function ensureAudioContextRunning() {
@@ -178,12 +190,12 @@ async function ensureAudioContextRunning() {
             markAudioReady();
             return true;
         } catch {
-            markAudioBlocked();
+            markAudioBlocked(!state.gameActive);
             return false;
         }
     }
 
-    markAudioBlocked();
+    markAudioBlocked(!state.gameActive);
     return false;
 }
 
@@ -258,7 +270,7 @@ export async function playSound(sound) {
         }
         sound.play();
     } catch {
-        markAudioBlocked();
+        markAudioBlocked(!state.gameActive);
     }
 }
 
@@ -275,7 +287,7 @@ export async function playBackgroundMusic() {
     try {
         state.bgMusic.play();
     } catch {
-        markAudioBlocked();
+        markAudioBlocked(!state.gameActive);
     }
 }
 
@@ -295,7 +307,7 @@ export async function playPenaltySound() {
         penaltySound.setPlaybackRate(0.5);
         penaltySound.play();
     } catch {
-        markAudioBlocked();
+        markAudioBlocked(!state.gameActive);
     }
 }
 

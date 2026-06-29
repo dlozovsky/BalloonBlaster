@@ -220,7 +220,23 @@ export function downloadScoreCard() {
     link.click();
 }
 
+let mobileHintTimeout = null;
+
 export function setMobileUiVisible(visible) {
     document.getElementById('mobile-pause-button').classList.toggle('hidden', !visible);
-    document.getElementById('mobile-hint').classList.toggle('hidden', !visible);
+    document.getElementById('mobile-fire-button').classList.toggle('hidden', !visible);
+    const hint = document.getElementById('mobile-hint');
+    hint.classList.toggle('hidden', !visible);
+
+    if (mobileHintTimeout) {
+        clearTimeout(mobileHintTimeout);
+        mobileHintTimeout = null;
+    }
+
+    if (visible && hint) {
+        mobileHintTimeout = window.setTimeout(() => {
+            hint.classList.add('hidden');
+            mobileHintTimeout = null;
+        }, 6000);
+    }
 }

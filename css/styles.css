@@ -43,6 +43,7 @@ body.menu-open #level-container,
 body.menu-open #timer-container,
 body.menu-open #mute-button,
 body.menu-open #mobile-pause-button,
+body.menu-open #mobile-fire-button,
 body.menu-open #fps-container,
 body.menu-open #mobile-hint,
 body.menu-open #audio-blocked-banner,
@@ -78,6 +79,10 @@ body.menu-open #crosshair {
 
 body.menu-open #crosshair {
     visibility: hidden;
+}
+
+body.touch-device #crosshair {
+    display: none;
 }
 
 #score-container {
@@ -377,6 +382,29 @@ input:focus-visible {
     pointer-events: auto;
 }
 
+#mobile-fire-button {
+    position: absolute;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, #ff4081 0%, #c51162 100%);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    padding: 16px 48px;
+    font-size: 22px;
+    font-weight: bold;
+    border-radius: 999px;
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    letter-spacing: 0.05em;
+}
+
+#mobile-fire-button:active {
+    transform: translateX(-50%) scale(0.96);
+}
+
 #mobile-hint {
     position: absolute;
     bottom: 20px;
@@ -581,6 +609,15 @@ body.reduced-motion.screen-shake {
     pointer-events: auto;
     cursor: pointer;
     z-index: 100;
+}
+
+body.game-active.touch-device #audio-blocked-banner:not(.hidden) {
+    top: auto;
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    font-size: 12px;
+    padding: 8px 12px;
+    max-width: calc(100% - 40px);
+    text-align: center;
 }
 
 #fatal-error-screen {

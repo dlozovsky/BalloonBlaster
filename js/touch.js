@@ -1,3 +1,4 @@
+import { resumeAudioOnGesture } from './audio.js';
 import { state } from './state.js';
 
 export function isTouchDevice() {
@@ -19,14 +20,40 @@ export function createTouchControls() {
     };
 }
 
-export function setupTouchControls(canvas, handlers) {
+export function resetTouchCamera() {
+    if (!state.camera) {
+        return;
+    }
+    state.camera.rotation.order = 'YXZ';
+    state.camera.rotation.set(0, 0, 0);
+}
+
+export function applyTouchAim(deltaX, deltaY) {
+    state.camera.rotation.order = 'YXZ';
+    const sensitivity = 0.004;
+    state.camera.rotation.y -= deltaX * sensitivity;
+    state.camera.rotation.x -= deltaY * sensitivity;
+    state.camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.camera.rotation.x));
+    state.camera.rotation.z = 0;
+}
+
+export function setupTouchControls(surface, handlers) {
     let touchStart = null;
     let totalMovement = 0;
+    let touchId = null;
 
     const onTouchStart = (event) => {
         if (!state.gameActive || state.gamePaused || event.touches.length !== 1) {
             return;
         }
+
+        if (event.target.closest('#mobile-fire-button, #mobile-pause-button, #mute-button, #audio-blocked-banner')) {
+            return;
+        }
+
+        void resumeAudioOnGesture();
+
+        touchId = event.touches[0].identifier;
         touchStart = {
             x: event.touches[0].clientX,
             y: event.touches[0].clientY,
@@ -35,42 +62,50 @@ export function setupTouchControls(canvas, handlers) {
     };
 
     const onTouchMove = (event) => {
-        if (!touchStart || event.touches.length !== 1) {
+        if (!touchStart || touchId === null) {
             return;
         }
+
+        const touch = Array.from(event.touches).find((entry) => entry.identifier === touchId);
+        if (!touch) {
+            return;
+        }
+
         event.preventDefault();
-        const dx = event.touches[0].clientX - touchStart.x;
-        const dy = event.touches[0].clientY - touchStart.y;
+        const dx = touch.clientX - touchStart.x;
+        const dy = touch.clientY - touchStart.y;
         totalMovement += Math.abs(dx) + Math.abs(dy);
         handlers.onAim(dx, dy);
         touchStart = {
-            x: event.touches[0].clientX,
-            y: event.touches[0].clientY,
+            x: touch.clientX,
+            y: touch.clientY,
         };
     };
 
-    const onTouchEnd = () => {
-        if (touchStart && totalMovement < 18) {
+    const onTouchEnd = (event) => {
+        const endedTouch = Array.from(event.changedTouches).find((entry) => entry.identifier === touchId);
+        if (!endedTouch || !touchStart) {
+            return;
+        }
+
+        if (totalMovement < 12) {
             handlers.onShoot();
         }
+
         touchStart = null;
+        touchId = null;
         totalMovement = 0;
     };
 
-    canvas.addEventListener('touchstart', onTouchStart, { passive: true });
-    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    canvas.addEventListener('touchend', onTouchEnd, { passive: true });
+    surface.addEventListener('touchstart', onTouchStart, { passive: true });
+    surface.addEventListener('touchmove', onTouchMove, { passive: false });
+    surface.addEventListener('touchend', onTouchEnd, { passive: true });
+    surface.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
     return () => {
-        canvas.removeEventListener('touchstart', onTouchStart);
-        canvas.removeEventListener('touchmove', onTouchMove);
-        canvas.removeEventListener('touchend', onTouchEnd);
+        surface.removeEventListener('touchstart', onTouchStart);
+        surface.removeEventListener('touchmove', onTouchMove);
+        surface.removeEventListener('touchend', onTouchEnd);
+        surface.removeEventListener('touchcancel', onTouchEnd);
     };
-}
-
-export function applyTouchAim(deltaX, deltaY) {
-    const sensitivity = 0.004;
-    state.camera.rotation.y -= deltaX * sensitivity;
-    state.camera.rotation.x -= deltaY * sensitivity;
-    state.camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.camera.rotation.x));
 }
