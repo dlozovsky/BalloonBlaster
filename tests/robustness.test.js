@@ -107,3 +107,13 @@ test('persistSaveData returns normalized data when storage quota is exceeded', (
     assert.deepEqual(normalized.arcadeHighScore, { bestScore: 15, bestLevel: 2 });
     assert.equal(normalized.survivalHighScore, 9);
 });
+
+test('loadSaveData migrates legacy keys when versioned blob is corrupt', () => {
+    const store = {
+        [SAVE_DATA_KEY]: '{not valid json',
+        [HIGH_SCORE_KEY]: JSON.stringify({ bestScore: 77, bestLevel: 5 }),
+    };
+
+    const loaded = loadSaveData((key) => store[key] ?? null);
+    assert.deepEqual(loaded.arcadeHighScore, { bestScore: 77, bestLevel: 5 });
+});

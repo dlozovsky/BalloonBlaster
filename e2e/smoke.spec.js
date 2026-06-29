@@ -154,6 +154,27 @@ test.describe('Balloon Blaster smoke tests', () => {
         await expect(page.locator('#score')).toHaveText('0');
     });
 
+    test('chains combo multiplier after consecutive pops in test mode', async ({ page }) => {
+        await page.goto('/?test=1');
+        await page.locator('#start-button').click();
+        await page.waitForFunction(() => window.__bbTest?.getBalloonCount() > 1);
+
+        const hits = await page.evaluate(() => window.__bbTest.hitNormalBalloons(2));
+        expect(hits).toBe(2);
+        await expect(page.locator('#combo')).toHaveText('x2');
+    });
+
+    test('animation loop advances frame count during gameplay', async ({ page }) => {
+        await page.goto('/?test=1');
+        await page.locator('#start-button').click();
+        await page.waitForFunction(() => window.__bbTest?.getFrameCount() > 20, null, {
+            timeout: 10_000,
+        });
+
+        const frameCount = await page.evaluate(() => window.__bbTest.getFrameCount());
+        expect(frameCount).toBeGreaterThan(20);
+    });
+
     test('loads on iPhone even if PointerLockControls is missing', async ({ browser }) => {
         const context = await browser.newContext({
             viewport: { width: 390, height: 844 },

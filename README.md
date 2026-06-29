@@ -135,6 +135,10 @@ Playwright reports are uploaded as artifacts when e2e jobs fail.
 
 `simple-git-hooks` runs `npm run check` before each commit when hooks are installed (`npm install` runs `prepare` automatically).
 
+### WebGL recovery
+
+If the GPU context is lost (common on mobile tab backgrounding), the game pauses automatically and shows a recovery banner. Rendering resumes when the browser restores the context.
+
 ## License
 
 See repository for license details.

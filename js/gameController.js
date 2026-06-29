@@ -42,6 +42,7 @@ import {
 import { initMenuState, syncMenuState } from './menuState.js';
 import { initStorage, saveHighScoreIfNeeded, saveSurvivalHighScoreIfNeeded } from './storage.js';
 import { installTestHooks } from './testHooks.js';
+import { setupWebGLContextHandlers } from './webglContext.js';
 import { loadAudioPreference, state } from './state.js';
 import {
     applyConfig,
@@ -542,6 +543,7 @@ function animate() {
     const now = performance.now();
     const delta = Math.min((now - state.lastFrameTime) / 1000, 0.05);
     state.lastFrameTime = now;
+    state.frameCount += 1;
     updateFpsCounter(now);
 
     if (state.gamePaused) {
@@ -568,12 +570,29 @@ function installGameplayTestHooks() {
     installTestHooks({
         getBalloonCount: () => state.balloons.length,
         getScore: () => state.score,
+        getComboMultiplier: () => state.comboMultiplier,
+        getFrameCount: () => state.frameCount,
         hitFirstBalloon: () => {
             if (state.balloons[0]) {
                 hitBalloon(state.balloons[0]);
             }
         },
+        hitNormalBalloons: (count) => {
+            let hits = 0;
+            while (hits < count) {
+                const balloon = state.balloons.find((entry) => (
+                    entry.userData.type !== 'PENALTY' && entry.userData.type !== 'POWERUP'
+                ));
+                if (!balloon) {
+                    break;
+                }
+                hitBalloon(balloon);
+                hits += 1;
+            }
+            return hits;
+        },
         getPoolStats,
+        isWebGLContextLost: () => state.webglContextLost,
     });
 }
 
@@ -595,6 +614,9 @@ export function initGame() {
     updateAchievementsDisplay();
 
     initRenderer();
+    setupWebGLContextHandlers(state.renderer.domElement, {
+        onContextRestored: onWindowResize,
+    });
     syncMenuState();
     setupControls();
 
