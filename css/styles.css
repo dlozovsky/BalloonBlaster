@@ -46,6 +46,7 @@ body.menu-open #mobile-pause-button,
 body.menu-open #fps-container,
 body.menu-open #mobile-hint,
 body.menu-open #audio-blocked-banner,
+body.menu-open #webgl-recovery-banner,
 body.menu-open #crosshair {
     pointer-events: none;
 }
@@ -581,6 +582,21 @@ body.reduced-motion.screen-shake {
     pointer-events: auto;
     cursor: pointer;
     z-index: 100;
+}
+
+#webgl-recovery-banner {
+    position: absolute;
+    top: 190px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: #00e5ff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    pointer-events: none;
+    z-index: 100;
+    text-align: center;
 }
 
 #fatal-error-screen {

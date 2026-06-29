@@ -25,6 +25,34 @@ const PARTICLE_MATERIALS = {
 };
 const particlePool = [];
 
+const BALLOON_GEOMETRY = new THREE.SphereGeometry(1, 32, 16);
+const STRING_GEOMETRY = new THREE.CylinderGeometry(0.01, 0.01, 1, 8);
+const STRING_MATERIAL = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const BALLOON_MATERIALS = {
+    NORMAL: new THREE.MeshPhongMaterial({
+        color: BALLOON_TYPES.NORMAL.color,
+        shininess: 100,
+        specular: 0x111111,
+    }),
+    SPECIAL: new THREE.MeshPhongMaterial({
+        color: BALLOON_TYPES.SPECIAL.color,
+        shininess: 100,
+        specular: 0x111111,
+    }),
+    PENALTY: new THREE.MeshPhongMaterial({
+        color: BALLOON_TYPES.PENALTY.color,
+        shininess: 100,
+        specular: 0x111111,
+    }),
+    POWERUP: new THREE.MeshPhongMaterial({
+        color: BALLOON_TYPES.POWERUP.color,
+        emissive: 0x00bcd4,
+        emissiveIntensity: 0.6,
+        shininess: 120,
+    }),
+};
+const balloonPool = [];
+
 function getParticleMaterialKey(type) {
     if (type === 'SPECIAL') {
         return 'SPECIAL';
@@ -60,6 +88,76 @@ function releaseParticle(particle) {
     particle.userData.lifetime = 0;
     state.scene.remove(particle);
     particlePool.push(particle);
+}
+
+function getBalloonMaterialKey(type) {
+    if (type === 'SPECIAL') {
+        return 'SPECIAL';
+    }
+    if (type === 'PENALTY') {
+        return 'PENALTY';
+    }
+    if (type === 'POWERUP') {
+        return 'POWERUP';
+    }
+    return 'NORMAL';
+}
+
+function configureBalloon(balloon, type) {
+    const balloonType = resolveBalloonType(type);
+    const materialKey = getBalloonMaterialKey(type);
+
+    balloon.material = BALLOON_MATERIALS[materialKey];
+    balloon.visible = true;
+    balloon.scale.set(balloonType.scale, balloonType.scale * 1.2, balloonType.scale);
+
+    const stringMesh = balloon.userData.stringMesh;
+    if (stringMesh) {
+        stringMesh.position.y = -0.5 * balloonType.scale - 0.5;
+    }
+
+    balloon.position.set(
+        (Math.random() - 0.5) * (ROOM_WIDTH - 2),
+        ROOM_HEIGHT * 0.3 + Math.random() * ROOM_HEIGHT * 0.5,
+        (Math.random() - 0.5) * (ROOM_DEPTH - 2),
+    );
+
+    balloon.userData.type = type;
+    balloon.userData.points = balloonType.points;
+    balloon.userData.speed = balloonType.baseSpeed * state.difficultyParams.balloonSpeed;
+    balloon.userData.direction = new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 0.5,
+        (Math.random() - 0.5) * 2,
+    ).normalize();
+}
+
+function acquireBalloon(type) {
+    let balloon = balloonPool.pop();
+
+    if (!balloon) {
+        balloon = new THREE.Mesh(BALLOON_GEOMETRY, BALLOON_MATERIALS.NORMAL);
+        const stringMesh = new THREE.Mesh(STRING_GEOMETRY, STRING_MATERIAL);
+        balloon.add(stringMesh);
+        balloon.userData.stringMesh = stringMesh;
+    }
+
+    configureBalloon(balloon, type);
+    balloon.castShadow = true;
+    return balloon;
+}
+
+function releaseBalloon(balloon) {
+    balloon.visible = false;
+    state.scene.remove(balloon);
+    balloonPool.push(balloon);
+}
+
+export function getPoolStats() {
+    return {
+        balloons: balloonPool.length,
+        particles: particlePool.length,
+    };
 }
 
 export function initRenderer() {
@@ -197,50 +295,7 @@ function resolveBalloonType(type) {
 }
 
 function createBalloon(type) {
-    const balloonType = resolveBalloonType(type);
-
-    const material = type === 'POWERUP'
-        ? new THREE.MeshPhongMaterial({
-            color: balloonType.color,
-            emissive: 0x00bcd4,
-            emissiveIntensity: 0.6,
-            shininess: 120,
-        })
-        : new THREE.MeshPhongMaterial({
-            color: balloonType.color,
-            shininess: 100,
-            specular: 0x111111,
-        });
-
-    const balloon = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), material);
-
-    balloon.scale.set(balloonType.scale, balloonType.scale * 1.2, balloonType.scale);
-
-    const string = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.01, 0.01, 1, 8),
-        new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    );
-    string.position.y = -0.5 * balloonType.scale - 0.5;
-    balloon.add(string);
-
-    balloon.position.set(
-        (Math.random() - 0.5) * (ROOM_WIDTH - 2),
-        ROOM_HEIGHT * 0.3 + Math.random() * ROOM_HEIGHT * 0.5,
-        (Math.random() - 0.5) * (ROOM_DEPTH - 2),
-    );
-
-    balloon.userData = {
-        type,
-        points: balloonType.points,
-        speed: balloonType.baseSpeed * state.difficultyParams.balloonSpeed,
-        direction: new THREE.Vector3(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 0.5,
-            (Math.random() - 0.5) * 2,
-        ).normalize(),
-    };
-
-    balloon.castShadow = true;
+    const balloon = acquireBalloon(type);
     state.scene.add(balloon);
     state.balloons.push(balloon);
     return balloon;
@@ -300,8 +355,7 @@ export function updateBalloons() {
 
 export function clearBalloons() {
     while (state.balloons.length > 0) {
-        const balloon = state.balloons.pop();
-        state.scene.remove(balloon);
+        releaseBalloon(state.balloons.pop());
     }
 }
 
@@ -348,11 +402,11 @@ export function createPopEffect(position, type) {
 }
 
 export function removeBalloon(balloon) {
-    state.scene.remove(balloon);
     const balloonIndex = state.balloons.indexOf(balloon);
     if (balloonIndex > -1) {
         state.balloons.splice(balloonIndex, 1);
     }
+    releaseBalloon(balloon);
 }
 
 export function onWindowResize() {

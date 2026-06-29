@@ -88,3 +88,32 @@ test('persistSaveData normalizes invalid fields', () => {
     assert.deepEqual(normalized.achievements, ['first_pop']);
     assert.ok(written[SAVE_DATA_KEY]);
 });
+
+test('persistSaveData returns normalized data when storage quota is exceeded', () => {
+    const quotaError = new Error('quota exceeded');
+    quotaError.name = 'QuotaExceededError';
+
+    const normalized = persistSaveData({
+        version: 999,
+        arcadeHighScore: { bestScore: 15, bestLevel: 2 },
+        survivalHighScore: 9,
+        audioEnabled: true,
+        achievements: ['first_pop'],
+    }, () => {
+        throw quotaError;
+    });
+
+    assert.equal(normalized.version, SAVE_DATA_VERSION);
+    assert.deepEqual(normalized.arcadeHighScore, { bestScore: 15, bestLevel: 2 });
+    assert.equal(normalized.survivalHighScore, 9);
+});
+
+test('loadSaveData migrates legacy keys when versioned blob is corrupt', () => {
+    const store = {
+        [SAVE_DATA_KEY]: '{not valid json',
+        [HIGH_SCORE_KEY]: JSON.stringify({ bestScore: 77, bestLevel: 5 }),
+    };
+
+    const loaded = loadSaveData((key) => store[key] ?? null);
+    assert.deepEqual(loaded.arcadeHighScore, { bestScore: 77, bestLevel: 5 });
+});

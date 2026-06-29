@@ -60,6 +60,9 @@ export function teardownAll() {
     if (state.renderer?.domElement?.parentNode) {
         state.renderer.domElement.parentNode.removeChild(state.renderer.domElement);
     }
+
+    state.renderer?.dispose?.();
+    state.renderer = null;
 }
 
 export function addGameplayListener(target, event, handler, options) {
