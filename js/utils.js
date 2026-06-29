@@ -2,6 +2,7 @@ import { CONFIG } from './config.js';
 
 export function debugLog(...args) {
     if (CONFIG.debugMode) {
+        // eslint-disable-next-line no-console -- intentional debug output behind CONFIG flag
         console.log(...args);
     }
 }

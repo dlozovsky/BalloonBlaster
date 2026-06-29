@@ -18,7 +18,7 @@ export function checkCapabilities() {
         };
     }
 
-    if (typeof PointerLockControls === 'undefined') {
+    if (typeof THREE.PointerLockControls === 'undefined') {
         return {
             ok: false,
             reason: 'Required game controls failed to load.',

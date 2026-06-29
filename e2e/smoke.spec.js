@@ -1,0 +1,54 @@
+import { expect, test } from '@playwright/test';
+
+test.describe('Balloon Blaster smoke tests', () => {
+    test('loads the start screen and core UI', async ({ page }) => {
+        await page.goto('/');
+
+        await expect(page).toHaveTitle(/Balloon Blaster/i);
+        await expect(page.locator('#start-screen')).toBeVisible();
+        await expect(page.locator('#game-title')).toHaveText('BALLOON BLASTER');
+        await expect(page.locator('#start-button')).toBeVisible();
+        await expect(page.locator('#fatal-error-screen')).toBeHidden();
+    });
+
+    test('initializes WebGL canvas without fatal error', async ({ page }) => {
+        await page.goto('/');
+        await page.waitForTimeout(500);
+
+        await expect(page.locator('#fatal-error-screen')).toBeHidden();
+        await expect(page.locator('canvas')).toHaveCount(1);
+    });
+
+    test('starts arcade mode from the menu', async ({ page }) => {
+        await page.goto('/');
+
+        await page.locator('input[value="arcade"]').check();
+        await page.locator('#start-button').click();
+
+        await expect(page.locator('#start-screen')).toBeHidden();
+        await expect(page.locator('#score')).toHaveText('0');
+        await expect(page.locator('#level')).toHaveText('1');
+    });
+
+    test('persists versioned save data after interaction', async ({ page }) => {
+        await page.addInitScript(() => {
+            localStorage.setItem('balloonBlasterHighScore', JSON.stringify({
+                bestScore: 42,
+                bestLevel: 2,
+            }));
+        });
+
+        await page.goto('/');
+        await page.waitForTimeout(300);
+
+        const migrated = await page.evaluate(() => {
+            const raw = localStorage.getItem('balloonBlasterSave');
+            return raw ? JSON.parse(raw) : null;
+        });
+
+        expect(migrated).not.toBeNull();
+        expect(migrated.version).toBe(1);
+        expect(migrated.arcadeHighScore.bestScore).toBe(42);
+        expect(migrated.arcadeHighScore.bestLevel).toBe(2);
+    });
+});

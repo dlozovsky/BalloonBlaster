@@ -16,6 +16,51 @@ import {
     debugLog,
 } from './utils.js';
 
+const PARTICLE_GEOMETRY = new THREE.SphereGeometry(0.1, 8, 8);
+const PARTICLE_MATERIALS = {
+    NORMAL: new THREE.MeshBasicMaterial({ color: 0xff4081 }),
+    SPECIAL: new THREE.MeshBasicMaterial({ color: 0xffeb3b }),
+    PENALTY: new THREE.MeshBasicMaterial({ color: 0x000000 }),
+};
+const particlePool = [];
+
+function getParticleMaterialKey(type) {
+    if (type === 'SPECIAL') {
+        return 'SPECIAL';
+    }
+    if (type === 'PENALTY') {
+        return 'PENALTY';
+    }
+    return 'NORMAL';
+}
+
+function acquireParticle(type) {
+    const materialKey = getParticleMaterialKey(type);
+    let particle = particlePool.pop();
+
+    if (!particle) {
+        particle = new THREE.Mesh(PARTICLE_GEOMETRY, PARTICLE_MATERIALS[materialKey]);
+    } else {
+        particle.material = PARTICLE_MATERIALS[materialKey];
+        particle.visible = true;
+    }
+
+    particle.scale.setScalar(1);
+    particle.userData = {
+        velocity: new THREE.Vector3(),
+        lifetime: 0,
+    };
+
+    return particle;
+}
+
+function releaseParticle(particle) {
+    particle.visible = false;
+    particle.userData.lifetime = 0;
+    state.scene.remove(particle);
+    particlePool.push(particle);
+}
+
 export function initRenderer() {
     if (typeof THREE === 'undefined') {
         throw new Error('Three.js failed to load.');
@@ -36,7 +81,10 @@ export function initRenderer() {
     try {
         state.renderer = new THREE.WebGLRenderer({ antialias: true });
     } catch (error) {
-        throw new Error(`Failed to create WebGL renderer: ${error instanceof Error ? error.message : 'unknown error'}`);
+        throw new Error(
+            `Failed to create WebGL renderer: ${error instanceof Error ? error.message : 'unknown error'}`,
+            { cause: error },
+        );
     }
 
     state.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -250,8 +298,7 @@ export function clearBalloons() {
 
 export function clearParticles() {
     while (state.particles.length > 0) {
-        const particle = state.particles.pop();
-        state.scene.remove(particle);
+        releaseParticle(state.particles.pop());
     }
 }
 
@@ -261,8 +308,8 @@ export function updateParticles(delta) {
         particle.userData.lifetime += delta;
 
         if (particle.userData.lifetime >= PARTICLE_LIFETIME) {
-            state.scene.remove(particle);
             state.particles.splice(i, 1);
+            releaseParticle(particle);
             continue;
         }
 
@@ -277,22 +324,15 @@ export function updateParticles(delta) {
 export function createPopEffect(position, type) {
     const baseCount = type === 'SPECIAL' ? 20 : 10;
     const particleCount = getParticleCount(baseCount);
-    const color = type === 'SPECIAL' ? 0xffeb3b : type === 'PENALTY' ? 0x000000 : 0xff4081;
 
     for (let i = 0; i < particleCount; i++) {
-        const particle = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 8, 8),
-            new THREE.MeshBasicMaterial({ color }),
-        );
+        const particle = acquireParticle(type);
         particle.position.copy(position);
-        particle.userData = {
-            velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.2,
-                Math.random() * 0.15,
-                (Math.random() - 0.5) * 0.2,
-            ),
-            lifetime: 0,
-        };
+        particle.userData.velocity.set(
+            (Math.random() - 0.5) * 0.2,
+            Math.random() * 0.15,
+            (Math.random() - 0.5) * 0.2,
+        );
         state.scene.add(particle);
         state.particles.push(particle);
     }
