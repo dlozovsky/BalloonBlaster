@@ -17,6 +17,12 @@ import {
     migrateLegacyStorage,
     persistSaveData,
 } from '../js/storage.js';
+import { needsPointerLockControls } from '../js/capability.js';
+
+test('needsPointerLockControls is false on touch devices', () => {
+    assert.equal(needsPointerLockControls(true), false);
+    assert.equal(needsPointerLockControls(false), true);
+});
 
 test('createTimerDeadline and computeTimeRemaining stay accurate across elapsed time', () => {
     const deadline = createTimerDeadline(1_000, 60);

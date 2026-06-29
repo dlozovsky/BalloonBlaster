@@ -4,6 +4,21 @@ export function isTouchDevice() {
     return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 }
 
+export function createTouchControls() {
+    return {
+        isLocked: false,
+        lock() {
+            this.isLocked = true;
+        },
+        unlock() {
+            this.isLocked = false;
+        },
+        update() {
+            // Aiming is handled by touch drag handlers.
+        },
+    };
+}
+
 export function setupTouchControls(canvas, handlers) {
     let touchStart = null;
     let totalMovement = 0;

@@ -564,8 +564,9 @@ function animate() {
 
 export function initGame() {
     initStorage();
+    state.isTouchDevice = isTouchDevice();
 
-    const capabilities = checkCapabilities();
+    const capabilities = checkCapabilities(state.isTouchDevice);
     if (!capabilities.ok) {
         showFatalError(capabilities.reason, capabilities.details);
         return;
@@ -582,9 +583,11 @@ export function initGame() {
     syncMenuState();
     setupControls();
 
-    addManagedListener(document, 'pointerlockchange', onPointerLockChange, false);
-    addManagedListener(document, 'mozpointerlockchange', onPointerLockChange, false);
-    addManagedListener(document, 'webkitpointerlockchange', onPointerLockChange, false);
+    if (!state.isTouchDevice) {
+        addManagedListener(document, 'pointerlockchange', onPointerLockChange, false);
+        addManagedListener(document, 'mozpointerlockchange', onPointerLockChange, false);
+        addManagedListener(document, 'webkitpointerlockchange', onPointerLockChange, false);
+    }
 
     setupAudio();
     setupAudioBanner();

@@ -72,4 +72,32 @@ test.describe('Balloon Blaster smoke tests', () => {
 
         await context.close();
     });
+
+    test('loads on iPhone even if PointerLockControls is missing', async ({ browser }) => {
+        const context = await browser.newContext({
+            viewport: { width: 390, height: 844 },
+            hasTouch: true,
+            isMobile: true,
+            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        });
+        const page = await context.newPage();
+
+        await page.addInitScript(() => {
+            Object.defineProperty(window, 'ontouchstart', { value: () => {}, configurable: true });
+            Object.defineProperty(navigator, 'maxTouchPoints', { value: 5, configurable: true });
+        });
+
+        await page.goto('/');
+        await page.evaluate(() => {
+            delete window.THREE.PointerLockControls;
+        });
+
+        await expect(page.locator('#fatal-error-screen')).toBeHidden();
+        await expect(page.locator('#start-screen')).toBeVisible();
+
+        await page.locator('#start-button').tap();
+        await expect(page.locator('#start-screen')).toBeHidden({ timeout: 10_000 });
+
+        await context.close();
+    });
 });

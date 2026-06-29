@@ -15,7 +15,7 @@ import {
     createWoodFloorTexture,
     debugLog,
 } from './utils.js';
-import { isTouchDevice } from './touch.js';
+import { createTouchControls, isTouchDevice } from './touch.js';
 
 const PARTICLE_GEOMETRY = new THREE.SphereGeometry(0.1, 8, 8);
 const PARTICLE_MATERIALS = {
@@ -96,11 +96,14 @@ export function initRenderer() {
 }
 
 export function setupControls() {
+    if (isTouchDevice()) {
+        state.controls = createTouchControls();
+        debugLog('Using touch-only controls');
+        return;
+    }
+
     try {
-        const controlSurface = state.isTouchDevice || isTouchDevice()
-            ? state.renderer.domElement
-            : document.body;
-        state.controls = new THREE.PointerLockControls(state.camera, controlSurface);
+        state.controls = new THREE.PointerLockControls(state.camera, document.body);
         debugLog('Using THREE.PointerLockControls');
     } catch (error) {
         console.error('Error creating PointerLockControls:', error);
