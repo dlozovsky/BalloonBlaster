@@ -70,6 +70,7 @@ Edit [`js/config.js`](js/config.js):
 | `audioEnabled` | `true` | Default audio state on first visit |
 | `showFPS` | `false` | Show FPS counter in bottom-left |
 | `debugMode` | `false` | Enable debug logging to console |
+| `reducedMotion` | `false` | Reduce animations (also respects OS preference) |
 
 ## Project Structure
 
@@ -88,7 +89,11 @@ BalloonBlaster/
 │   ├── audio.js            # Procedural audio
 │   ├── ui.js               # DOM overlays and HUD
 │   ├── storage.js          # localStorage helpers
-│   └── utils.js            # Shared utilities
+│   ├── utils.js            # Shared utilities
+│   ├── achievements.js     # Achievement definitions
+│   ├── achievementsStorage.js
+│   ├── effects.js          # Screen shake, combo callouts
+│   └── touch.js            # Mobile touch controls
 ├── tests/gameLogic.test.js # Unit tests
 ├── help.html               # Player help / rules
 ├── vendor/                 # Vendored Three.js (offline play)
