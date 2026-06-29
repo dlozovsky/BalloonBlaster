@@ -1,7 +1,25 @@
 import { state } from './state.js';
 
+export const TOUCH_TAP_THRESHOLD_PX = 18;
+export const TOUCH_AIM_SENSITIVITY = 0.004;
+
 export function isTouchDevice() {
     return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+export function clampPitch(rotationX) {
+    return Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
+}
+
+export function computeAimRotation(rotation, deltaX, deltaY, sensitivity = TOUCH_AIM_SENSITIVITY) {
+    return {
+        x: clampPitch(rotation.x - deltaY * sensitivity),
+        y: rotation.y - deltaX * sensitivity,
+    };
+}
+
+export function isTapGesture(totalMovement, threshold = TOUCH_TAP_THRESHOLD_PX) {
+    return totalMovement < threshold;
 }
 
 export function createTouchControls() {
@@ -50,7 +68,7 @@ export function setupTouchControls(canvas, handlers) {
     };
 
     const onTouchEnd = () => {
-        if (touchStart && totalMovement < 18) {
+        if (touchStart && isTapGesture(totalMovement)) {
             handlers.onShoot();
         }
         touchStart = null;
@@ -69,8 +87,7 @@ export function setupTouchControls(canvas, handlers) {
 }
 
 export function applyTouchAim(deltaX, deltaY) {
-    const sensitivity = 0.004;
-    state.camera.rotation.y -= deltaX * sensitivity;
-    state.camera.rotation.x -= deltaY * sensitivity;
-    state.camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.camera.rotation.x));
+    const next = computeAimRotation(state.camera.rotation, deltaX, deltaY);
+    state.camera.rotation.x = next.x;
+    state.camera.rotation.y = next.y;
 }

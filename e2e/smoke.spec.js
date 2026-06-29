@@ -73,6 +73,55 @@ test.describe('Balloon Blaster smoke tests', () => {
         await context.close();
     });
 
+    test('starts survival mode from the menu', async ({ page }) => {
+        await page.goto('/');
+
+        await page.locator('input[value="survival"]').check();
+        await page.locator('#start-button').click();
+
+        await expect(page.locator('#start-screen')).toBeHidden();
+        await expect(page.locator('#level')).toHaveText('SURVIVAL');
+        await expect(page.locator('#timer')).toHaveText('90');
+    });
+
+    test('pauses and resumes arcade mode with Escape', async ({ page }) => {
+        await page.goto('/');
+
+        await page.locator('#start-button').click();
+        await expect(page.locator('#start-screen')).toBeHidden();
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#pause-screen')).toBeVisible();
+
+        await page.locator('#resume-button').click();
+        await expect(page.locator('#pause-screen')).toBeHidden();
+    });
+
+    test('toggles mute from the HUD', async ({ browser }) => {
+        const context = await browser.newContext({
+            viewport: { width: 390, height: 844 },
+            hasTouch: true,
+            isMobile: true,
+        });
+        const page = await context.newPage();
+
+        await page.goto('/');
+        await page.locator('#start-button').tap();
+        await expect(page.locator('#start-screen')).toBeHidden();
+
+        const muteButton = page.locator('#mute-button');
+        await expect(muteButton).toHaveAttribute('aria-label', 'Mute sound');
+
+        await muteButton.tap();
+        await expect(muteButton).toHaveAttribute('aria-label', 'Unmute sound');
+
+        await page.waitForTimeout(600);
+        await muteButton.tap();
+        await expect(muteButton).toHaveAttribute('aria-label', 'Mute sound');
+
+        await context.close();
+    });
+
     test('loads on iPhone even if PointerLockControls is missing', async ({ browser }) => {
         const context = await browser.newContext({
             viewport: { width: 390, height: 844 },
