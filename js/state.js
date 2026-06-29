@@ -45,6 +45,10 @@ export function createInitialState() {
         reducedMotion: false,
         survivalElapsed: 0,
         survivalDuration: SURVIVAL_DURATION,
+        frameCount: 0,
+        webglContextLost: false,
+        frameTimeTotal: 0,
+        frameTimeSamples: 0,
     };
 }
 

@@ -1,4 +1,4 @@
-import { unlockAchievement, updateAchievementsDisplay } from './achievementsStorage.js';
+import { unlockAchievement, updateAchievementsDisplay, getUnlockedAchievements } from './achievementsStorage.js';
 import {
     applyAudioState,
     playBackgroundMusic,
@@ -41,6 +41,9 @@ import {
 } from './lifecycle.js';
 import { initMenuState, syncMenuState } from './menuState.js';
 import { initStorage, saveHighScoreIfNeeded, saveSurvivalHighScoreIfNeeded } from './storage.js';
+import { installTestHooks } from './testHooks.js';
+import { computeAverageFrameMs } from './performance.js';
+import { setupWebGLContextHandlers } from './webglContext.js';
 import { loadAudioPreference, state } from './state.js';
 import {
     applyConfig,
@@ -64,6 +67,7 @@ import {
     clearParticles,
     createPopEffect,
     createRoom,
+    getPoolStats,
     initRenderer,
     onWindowResize,
     removeBalloon,
@@ -540,6 +544,11 @@ function animate() {
     const now = performance.now();
     const delta = Math.min((now - state.lastFrameTime) / 1000, 0.05);
     state.lastFrameTime = now;
+    state.frameCount += 1;
+    if (!state.gamePaused) {
+        state.frameTimeTotal += delta * 1000;
+        state.frameTimeSamples += 1;
+    }
     updateFpsCounter(now);
 
     if (state.gamePaused) {
@@ -562,6 +571,55 @@ function animate() {
     state.renderer.render(state.scene, state.camera);
 }
 
+function installGameplayTestHooks() {
+    installTestHooks({
+        getBalloonCount: () => state.balloons.length,
+        getScore: () => state.score,
+        getLevel: () => state.currentLevel,
+        getTargetScore: () => state.targetScore,
+        getComboMultiplier: () => state.comboMultiplier,
+        getFrameCount: () => state.frameCount,
+        getPerformanceStats: () => ({
+            frameCount: state.frameCount,
+            avgFrameMs: computeAverageFrameMs(state.frameTimeTotal, state.frameTimeSamples),
+        }),
+        getUnlockedAchievements: () => [...getUnlockedAchievements()],
+        setScore: (score) => {
+            state.score = Math.max(0, Number(score) || 0);
+            updateScoreDisplay();
+        },
+        expireLevelTimer: () => {
+            if (!state.gameActive || state.gamePaused) {
+                return;
+            }
+            state.timeRemaining = 0;
+            state.levelEndAt = Date.now();
+            onTimerTick();
+        },
+        hitFirstBalloon: () => {
+            if (state.balloons[0]) {
+                hitBalloon(state.balloons[0]);
+            }
+        },
+        hitNormalBalloons: (count) => {
+            let hits = 0;
+            while (hits < count) {
+                const balloon = state.balloons.find((entry) => (
+                    entry.userData.type !== 'PENALTY' && entry.userData.type !== 'POWERUP'
+                ));
+                if (!balloon) {
+                    break;
+                }
+                hitBalloon(balloon);
+                hits += 1;
+            }
+            return hits;
+        },
+        getPoolStats,
+        isWebGLContextLost: () => state.webglContextLost,
+    });
+}
+
 export function initGame() {
     initStorage();
     state.isTouchDevice = isTouchDevice();
@@ -580,6 +638,9 @@ export function initGame() {
     updateAchievementsDisplay();
 
     initRenderer();
+    setupWebGLContextHandlers(state.renderer.domElement, {
+        onContextRestored: onWindowResize,
+    });
     syncMenuState();
     setupControls();
 
@@ -606,4 +667,5 @@ export function initGame() {
     animate();
     applyAudioState();
     initMenuState();
+    installGameplayTestHooks();
 }

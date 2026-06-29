@@ -93,8 +93,14 @@ BalloonBlaster/
 │   ├── achievements.js     # Achievement definitions
 │   ├── achievementsStorage.js
 │   ├── effects.js          # Screen shake, combo callouts
-│   └── touch.js            # Mobile touch controls
-├── tests/gameLogic.test.js # Unit tests
+│   ├── touch.js            # Mobile touch controls
+│   ├── capability.js       # WebGL / browser capability checks
+│   ├── errors.js           # Fatal error UI and global handlers
+│   ├── lifecycle.js        # Listener and timer teardown
+│   └── menuState.js        # Menu/canvas pointer-event sync
+├── tests/                  # Unit tests (gameLogic, robustness, touch)
+├── e2e/                    # Playwright smoke tests
+├── .github/workflows/ci.yml
 ├── help.html               # Player help / rules
 ├── vendor/                 # Vendored Three.js (offline play)
 │   ├── three.min.js
@@ -106,11 +112,37 @@ BalloonBlaster/
 
 VS Code users can launch Chrome against `http://localhost:8080` using the included `.vscode/launch.json`. Start the server first with `npm start`.
 
-Run unit tests with:
+### Scripts
 
-```bash
-npm test
-```
+| Command | Description |
+|---------|-------------|
+| `npm start` | Serve the game at http://localhost:8080 |
+| `npm run lint` | Run ESLint |
+| `npm run check` | Lint + unit tests (CI fast path) |
+| `npm run check:all` | Lint + unit tests + Playwright e2e |
+| `npm test` | Node unit tests |
+| `npm run test:e2e` | Playwright browser smoke tests |
+
+### CI
+
+GitHub Actions runs on every push and pull request:
+
+- **unit** — ESLint + unit tests
+- **e2e** — Playwright smoke tests (load, WebGL init, arcade/survival start, pause/resume, mute, iPhone viewport)
+
+Playwright reports are uploaded as artifacts when e2e jobs fail.
+
+### Pre-commit
+
+`simple-git-hooks` runs `npm run check` before each commit when hooks are installed (`npm install` runs `prepare` automatically).
+
+### WebGL recovery
+
+If the GPU context is lost (common on mobile tab backgrounding), the game pauses automatically and shows a recovery banner. Rendering resumes when the browser restores the context. Fatal error overlays are suppressed during recovery so the session can continue.
+
+### Performance checks
+
+Test mode (`?test=1`) exposes frame timing stats used by Playwright to verify the animation loop stays within a healthy budget in CI.
 
 ## License
 
