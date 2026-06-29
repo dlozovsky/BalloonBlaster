@@ -1,6 +1,7 @@
 import { unlockAchievement, updateAchievementsDisplay } from './achievementsStorage.js';
 import {
     applyAudioState,
+    onGameplayStarted,
     playBackgroundMusic,
     playPenaltySound,
     playSound,
@@ -56,7 +57,7 @@ import {
     updateScoreMultiplierDisplay,
     updateTimerDisplay,
 } from './ui.js';
-import { applyTouchAim, isTouchDevice, setupTouchControls } from './touch.js';
+import { applyTouchAim, isTouchDevice, resetTouchCamera, setupTouchControls } from './touch.js';
 import { debugLog, isPointerLocked } from './utils.js';
 import {
     addLights,
@@ -205,7 +206,7 @@ function hitBalloon(balloon) {
     removeBalloon(balloon);
 }
 
-function shoot() {
+export function shoot() {
     if (!state.gameActive || state.gamePaused) {
         return;
     }
@@ -423,6 +424,7 @@ function startGameInternal() {
 
     state.gameActive = true;
     state.gamePaused = false;
+    onGameplayStarted();
 
     void resumeAudioOnGesture();
     void playBackgroundMusic();
@@ -434,7 +436,9 @@ function startGameInternal() {
     addGameplayListener(document, 'keydown', handleKeyDown);
 
     if (state.isTouchDevice) {
-        registerTouchCleanup(setupTouchControls(state.renderer.domElement, {
+        resetTouchCamera();
+        const touchSurface = document.getElementById('game-canvas') ?? state.renderer.domElement;
+        registerTouchCleanup(setupTouchControls(touchSurface, {
             onAim: applyTouchAim,
             onShoot: shoot,
         }));
