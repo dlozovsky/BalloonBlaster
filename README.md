@@ -10,7 +10,11 @@ A browser-based first-person 3D arcade game. Look around the room, shoot floatin
 - **Pause** — press Escape or lose window focus
 - **Audio toggle** — mute/unmute with preference saved locally
 - **High scores** — best score and level tracked in the browser
-- **Score sharing** — copy or share your results
+- **Score sharing** — copy or share your results, or download a score card image
+- **Survival mode** — 90-second high-score challenge with ramping difficulty
+- **Power-ups** — cyan double-score balloons from level 3
+- **Achievements** — unlock milestones tracked in the browser
+- **Mobile support** — drag to aim, tap to shoot, on-screen pause
 - **Help page** — full rules at [`help.html`](help.html)
 
 ## Requirements

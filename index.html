@@ -7,39 +7,55 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div id="ui-container">
+    <div id="ui-container" aria-live="polite">
         <div id="score-container">Score: <span id="score">0</span></div>
         <div id="combo-container">Combo: <span id="combo">x1</span></div>
+        <div id="multiplier-container" class="hidden">2x Score Active!</div>
         <div id="level-container">Level: <span id="level">1</span></div>
         <div id="timer-container">Time: <span id="timer">60</span>s</div>
         <button id="mute-button" type="button" aria-label="Toggle sound">🔊</button>
+        <button id="mobile-pause-button" type="button" class="hidden" aria-label="Pause game">⏸</button>
         <div id="fps-container" class="hidden">FPS: 0</div>
+        <div id="mobile-hint" class="hidden">Drag to aim · Tap to shoot</div>
 
-        <div id="crosshair"></div>
+        <div id="crosshair" aria-hidden="true"></div>
 
-        <div id="start-screen">
+        <div id="start-screen" role="dialog" aria-labelledby="game-title">
             <div id="game-title">BALLOON BLASTER</div>
-            <div id="high-score-container">Best: <span id="best-score">0</span> pts (Level <span id="best-level">1</span>)</div>
+            <div id="high-score-container">
+                Arcade best: <span id="best-score">0</span> pts (Level <span id="best-level">1</span>)<br>
+                Survival best: <span id="best-survival-score">0</span> pts
+            </div>
+            <fieldset id="mode-select" class="mode-select">
+                <legend>Game mode</legend>
+                <label><input type="radio" name="game-mode" value="arcade" checked> Arcade (10 levels)</label>
+                <label><input type="radio" name="game-mode" value="survival"> Survival (90 seconds)</label>
+            </fieldset>
+            <div id="achievements-panel">
+                <h2>Achievements</h2>
+                <ul id="achievements-list" aria-label="Achievement progress"></ul>
+            </div>
             <button id="start-button">START GAME</button>
             <a id="help-button" href="help.html" target="_blank">HOW TO PLAY</a>
         </div>
 
-        <div id="game-over-screen" class="hidden">
+        <div id="game-over-screen" class="hidden" role="dialog" aria-labelledby="game-over-title">
             <h1 id="game-over-title">GAME OVER</h1>
             <p id="new-high-score">NEW HIGH SCORE!</p>
             <p id="game-over-message"></p>
             <div id="final-score-container">
                 Score: <span id="final-score">0</span> | Level: <span id="final-level">1</span>
             </div>
-            <button id="share-button">SHARE YOUR SCORE!</button>
-            <button id="restart-button">PLAY AGAIN</button>
+            <button id="download-card-button" type="button">DOWNLOAD SCORE CARD</button>
+            <button id="share-button" type="button">SHARE YOUR SCORE!</button>
+            <button id="restart-button" type="button">PLAY AGAIN</button>
         </div>
 
-        <div id="pause-screen">
+        <div id="pause-screen" role="dialog" aria-labelledby="pause-title">
             <div id="pause-title">GAME PAUSED</div>
-            <button id="resume-button">RESUME GAME</button>
+            <button id="resume-button" type="button">RESUME GAME</button>
             <a id="pause-help-button" href="help.html" target="_blank">HOW TO PLAY</a>
-            <button id="pause-quit-button">QUIT GAME</button>
+            <button id="pause-quit-button" type="button">QUIT GAME</button>
         </div>
     </div>
 

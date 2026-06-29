@@ -5,6 +5,7 @@ export const CONFIG = {
     audioEnabled: true,
     showFPS: false,
     debugMode: false,
+    reducedMotion: false,
 };
 
 if (typeof window !== 'undefined') {

@@ -3,12 +3,15 @@ import assert from 'node:assert/strict';
 import {
     calculateComboMultiplier,
     calculateEarnedPoints,
+    getActiveScoreMultiplier,
     getDifficultyForLevel,
     getPointsEarnedInLevel,
     getResetComboState,
+    getSurvivalDifficulty,
     getTargetScoreForLevel,
     hasMetLevelTarget,
     isNewHighScore,
+    maybePromoteToPowerUp,
     nextComboState,
     pickBalloonType,
 } from '../js/gameLogic.js';
@@ -37,6 +40,24 @@ test('calculateEarnedPoints applies combo only to non-penalty balloons', () => {
     assert.equal(calculateEarnedPoints('NORMAL', 1, 4), 4);
     assert.equal(calculateEarnedPoints('SPECIAL', 5, 3), 15);
     assert.equal(calculateEarnedPoints('PENALTY', -3, 4), -3);
+    assert.equal(calculateEarnedPoints('NORMAL', 1, 2, 2), 4);
+    assert.equal(calculateEarnedPoints('POWERUP', 0, 4, 2), 0);
+});
+
+test('getActiveScoreMultiplier expires after deadline', () => {
+    assert.equal(getActiveScoreMultiplier(1000, 2, 2000), 2);
+    assert.equal(getActiveScoreMultiplier(2500, 2, 2000), 1);
+});
+
+test('getSurvivalDifficulty ramps every 15 seconds', () => {
+    assert.equal(getSurvivalDifficulty(0).balloonCount, 10);
+    assert.equal(getSurvivalDifficulty(30).balloonCount, 14);
+});
+
+test('maybePromoteToPowerUp only upgrades normal balloons', () => {
+    assert.equal(maybePromoteToPowerUp('NORMAL', 3, 0.01, 3, 0.05), 'POWERUP');
+    assert.equal(maybePromoteToPowerUp('SPECIAL', 3, 0.01, 3, 0.05), 'SPECIAL');
+    assert.equal(maybePromoteToPowerUp('NORMAL', 2, 0.01, 3, 0.05), 'NORMAL');
 });
 
 test('getDifficultyForLevel scales with level', () => {

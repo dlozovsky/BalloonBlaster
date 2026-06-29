@@ -1,4 +1,4 @@
-import { AUDIO_ENABLED_KEY, HIGH_SCORE_KEY } from './constants.js';
+import { AUDIO_ENABLED_KEY, HIGH_SCORE_KEY, SURVIVAL_HIGH_SCORE_KEY } from './constants.js';
 import { isNewHighScore } from './gameLogic.js';
 import { state } from './state.js';
 
@@ -39,4 +39,18 @@ export function saveHighScoreIfNeeded() {
 
 export function persistAudioPreference(enabled) {
     localStorage.setItem(AUDIO_ENABLED_KEY, String(enabled));
+}
+
+export function getSurvivalHighScore() {
+    const stored = localStorage.getItem(SURVIVAL_HIGH_SCORE_KEY);
+    return stored ? Number(stored) || 0 : 0;
+}
+
+export function saveSurvivalHighScoreIfNeeded() {
+    const currentBest = getSurvivalHighScore();
+    if (state.score > currentBest) {
+        localStorage.setItem(SURVIVAL_HIGH_SCORE_KEY, String(state.score));
+        return true;
+    }
+    return false;
 }

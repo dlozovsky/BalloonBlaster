@@ -1,3 +1,5 @@
+import { MAX_LEVEL } from './constants.js';
+
 export function calculateComboMultiplier(comboCount) {
     return Math.min(comboCount, 4);
 }
@@ -27,11 +29,15 @@ export function getResetComboState() {
     };
 }
 
-export function calculateEarnedPoints(balloonType, basePoints, comboMultiplier) {
-    if (balloonType === 'PENALTY') {
+export function getActiveScoreMultiplier(now, multiplier, expiresAt) {
+    return expiresAt > now ? multiplier : 1;
+}
+
+export function calculateEarnedPoints(balloonType, basePoints, comboMultiplier, scoreMultiplier = 1) {
+    if (balloonType === 'PENALTY' || balloonType === 'POWERUP') {
         return basePoints;
     }
-    return basePoints * comboMultiplier;
+    return basePoints * comboMultiplier * scoreMultiplier;
 }
 
 export function getDifficultyForLevel(level) {
@@ -42,6 +48,11 @@ export function getDifficultyForLevel(level) {
         balloonSpeed: 1.0 + (level - 1) * 0.15,
         levelDuration: 60,
     };
+}
+
+export function getSurvivalDifficulty(elapsedSeconds) {
+    const tier = Math.floor(elapsedSeconds / 15) + 1;
+    return getDifficultyForLevel(Math.min(tier, MAX_LEVEL));
 }
 
 export function getTargetScoreForLevel(level) {
@@ -68,4 +79,11 @@ export function pickBalloonType(randomValue, level, difficultyParams) {
         return 'SPECIAL';
     }
     return 'NORMAL';
+}
+
+export function maybePromoteToPowerUp(type, level, randomValue, minLevel, chance) {
+    if (type === 'NORMAL' && level >= minLevel && randomValue < chance) {
+        return 'POWERUP';
+    }
+    return type;
 }

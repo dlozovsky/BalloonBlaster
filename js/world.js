@@ -1,11 +1,14 @@
 import {
     BALLOON_TYPES,
     PARTICLE_LIFETIME,
+    POWERUP_MIN_LEVEL,
+    POWERUP_SPAWN_CHANCE,
     ROOM_DEPTH,
     ROOM_HEIGHT,
     ROOM_WIDTH,
 } from './constants.js';
-import { pickBalloonType } from './gameLogic.js';
+import { maybePromoteToPowerUp, pickBalloonType } from './gameLogic.js';
+import { getParticleCount } from './effects.js';
 import { state } from './state.js';
 import {
     createBrickWallTexture,
@@ -114,21 +117,30 @@ export function createRoom() {
     state.scene.add(rightWall);
 }
 
-function createBalloon(type) {
-    const balloonType = type === 'SPECIAL'
-        ? BALLOON_TYPES.SPECIAL
-        : type === 'PENALTY'
-            ? BALLOON_TYPES.PENALTY
-            : BALLOON_TYPES.NORMAL;
+function resolveBalloonType(type) {
+    if (type === 'SPECIAL') return BALLOON_TYPES.SPECIAL;
+    if (type === 'PENALTY') return BALLOON_TYPES.PENALTY;
+    if (type === 'POWERUP') return BALLOON_TYPES.POWERUP;
+    return BALLOON_TYPES.NORMAL;
+}
 
-    const balloon = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 32, 16),
-        new THREE.MeshPhongMaterial({
+function createBalloon(type) {
+    const balloonType = resolveBalloonType(type);
+
+    const material = type === 'POWERUP'
+        ? new THREE.MeshPhongMaterial({
+            color: balloonType.color,
+            emissive: 0x00bcd4,
+            emissiveIntensity: 0.6,
+            shininess: 120,
+        })
+        : new THREE.MeshPhongMaterial({
             color: balloonType.color,
             shininess: 100,
             specular: 0x111111,
-        }),
-    );
+        });
+
+    const balloon = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), material);
 
     balloon.scale.set(balloonType.scale, balloonType.scale * 1.2, balloonType.scale);
 
@@ -171,11 +183,19 @@ export function spawnBalloons() {
     }
 
     for (let i = 0; i < balloonsToSpawn; i++) {
-        createBalloon(pickBalloonType(
+        let type = pickBalloonType(
             Math.random(),
             state.currentLevel,
             state.difficultyParams,
-        ));
+        );
+        type = maybePromoteToPowerUp(
+            type,
+            state.currentLevel,
+            Math.random(),
+            POWERUP_MIN_LEVEL,
+            POWERUP_SPAWN_CHANCE,
+        );
+        createBalloon(type);
     }
 
     debugLog(`Spawned ${balloonsToSpawn} new balloons. Total: ${state.balloons.length}`);
@@ -240,7 +260,8 @@ export function updateParticles(delta) {
 }
 
 export function createPopEffect(position, type) {
-    const particleCount = type === 'SPECIAL' ? 20 : 10;
+    const baseCount = type === 'SPECIAL' ? 20 : 10;
+    const particleCount = getParticleCount(baseCount);
     const color = type === 'SPECIAL' ? 0xffeb3b : type === 'PENALTY' ? 0x000000 : 0xff4081;
 
     for (let i = 0; i < particleCount; i++) {

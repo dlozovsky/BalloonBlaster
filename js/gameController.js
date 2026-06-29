@@ -1,3 +1,4 @@
+import { unlockAchievement, updateAchievementsDisplay } from './achievementsStorage.js';
 import {
     applyAudioState,
     playBackgroundMusic,
@@ -7,19 +8,34 @@ import {
     stopBackgroundMusic,
     toggleAudio,
 } from './audio.js';
+import { CONFIG } from './config.js';
+import { DOUBLE_SCORE_DURATION_MS } from './constants.js';
+import {
+    detectReducedMotion,
+    showComboMilestone,
+    showPowerUpMessage,
+    triggerScreenShake,
+} from './effects.js';
 import {
     calculateEarnedPoints,
+    getActiveScoreMultiplier,
     getDifficultyForLevel,
     getPointsEarnedInLevel,
     getResetComboState,
+    getSurvivalDifficulty,
     getTargetScoreForLevel,
     hasMetLevelTarget,
     nextComboState,
 } from './gameLogic.js';
-import { saveHighScoreIfNeeded } from './storage.js';
+import {
+    saveHighScoreIfNeeded,
+    saveSurvivalHighScoreIfNeeded,
+} from './storage.js';
 import { loadAudioPreference, state } from './state.js';
 import {
     applyConfig,
+    getSelectedGameMode,
+    setMobileUiVisible,
     showLevelMessage,
     showPointsIndicator,
     updateComboDisplay,
@@ -27,8 +43,10 @@ import {
     updateHighScoreDisplay,
     updateLevelDisplay,
     updateScoreDisplay,
+    updateScoreMultiplierDisplay,
     updateTimerDisplay,
 } from './ui.js';
+import { applyTouchAim, isTouchDevice, setupTouchControls } from './touch.js';
 import { debugLog, isPointerLocked } from './utils.js';
 import {
     addLights,
@@ -45,7 +63,20 @@ import {
     updateParticles,
 } from './world.js';
 
+let removeTouchControls = null;
+
+function resetLevelStats() {
+    state.hitsThisLevel = 0;
+    state.penaltyHitsThisLevel = 0;
+}
+
 function updateDifficultyParams() {
+    if (state.gameMode === 'survival') {
+        state.difficultyParams = getSurvivalDifficulty(state.survivalElapsed);
+        state.targetScore = 0;
+        return;
+    }
+
     state.difficultyParams = getDifficultyForLevel(state.currentLevel);
     state.targetScore = getTargetScoreForLevel(state.currentLevel);
     debugLog(`Level ${state.currentLevel} difficulty: ${JSON.stringify(state.difficultyParams)}, Target Score: ${state.targetScore}`);
@@ -65,6 +96,7 @@ function resetCombo() {
 
 function updateCombo() {
     const now = Date.now();
+    const previousMultiplier = state.comboMultiplier;
     const next = nextComboState(
         {
             comboCount: state.comboCount,
@@ -80,22 +112,69 @@ function updateCombo() {
     state.lastHitTime = next.lastHitTime;
     updateComboDisplay();
 
+    if (state.comboMultiplier > previousMultiplier && state.comboMultiplier >= 2) {
+        showComboMilestone(state.comboMultiplier);
+    }
+    if (state.comboMultiplier >= 4) {
+        unlockAchievement('combo_master');
+    }
+
     if (state.comboTimer) {
         clearTimeout(state.comboTimer);
     }
     state.comboTimer = setTimeout(resetCombo, state.comboResetDelay);
 }
 
+function activateDoubleScore() {
+    const now = Date.now();
+    state.scoreMultiplier = 2;
+    state.scoreMultiplierExpiresAt = now + DOUBLE_SCORE_DURATION_MS;
+    updateScoreMultiplierDisplay(true);
+    showPowerUpMessage('DOUBLE SCORE!');
+    unlockAchievement('double_down');
+}
+
+function refreshScoreMultiplier() {
+    const now = Date.now();
+    const active = getActiveScoreMultiplier(now, state.scoreMultiplier, state.scoreMultiplierExpiresAt);
+    updateScoreMultiplierDisplay(active > 1);
+    return active;
+}
+
+function handlePowerUpHit(balloon) {
+    activateDoubleScore();
+    updateCombo();
+    playSound(state.specialPopSound);
+    createPopEffect(balloon.position, 'SPECIAL');
+    removeBalloon(balloon);
+}
+
 function hitBalloon(balloon) {
     const balloonType = balloon.userData.type;
+
+    if (balloonType === 'POWERUP') {
+        handlePowerUpHit(balloon);
+        return;
+    }
+
     const basePoints = balloon.userData.points;
+    const scoreMultiplier = refreshScoreMultiplier();
     let earnedPoints = basePoints;
 
     if (balloonType === 'PENALTY') {
         resetCombo();
+        state.penaltyHitsThisLevel += 1;
+        triggerScreenShake();
     } else {
         updateCombo();
-        earnedPoints = calculateEarnedPoints(balloonType, basePoints, state.comboMultiplier);
+        earnedPoints = calculateEarnedPoints(
+            balloonType,
+            basePoints,
+            state.comboMultiplier,
+            scoreMultiplier,
+        );
+        state.hitsThisLevel += 1;
+        unlockAchievement('first_pop');
     }
 
     state.score += earnedPoints;
@@ -116,15 +195,9 @@ function hitBalloon(balloon) {
     removeBalloon(balloon);
 }
 
-function onShoot(event) {
+function shoot() {
     if (!state.gameActive || state.gamePaused) {
         return;
-    }
-
-    if (event?.type === 'click') {
-        if (!isPointerLocked() || event.target !== state.renderer.domElement) {
-            return;
-        }
     }
 
     playSound(state.shootSound);
@@ -140,6 +213,21 @@ function onShoot(event) {
     }
 }
 
+function onShoot(event) {
+    if (event?.type === 'click') {
+        if (!isPointerLocked() || event.target !== state.renderer.domElement) {
+            return;
+        }
+    }
+    shoot();
+}
+
+function checkLevelAchievements() {
+    if (state.penaltyHitsThisLevel === 0 && state.hitsThisLevel > 0) {
+        unlockAchievement('clean_slate');
+    }
+}
+
 function startLevelTimer() {
     if (state.levelTimer) {
         clearInterval(state.levelTimer);
@@ -152,9 +240,21 @@ function startLevelTimer() {
 
         state.timeRemaining -= 1;
         updateTimerDisplay();
+        refreshScoreMultiplier();
+
+        if (state.gameMode === 'survival') {
+            state.survivalElapsed = state.survivalDuration - state.timeRemaining;
+            state.difficultyParams = getSurvivalDifficulty(state.survivalElapsed);
+        }
 
         if (state.timeRemaining <= 0) {
             clearInterval(state.levelTimer);
+
+            if (state.gameMode === 'survival') {
+                endGame('TIME UP!', `Survival complete! You scored ${state.score} points.`);
+                return;
+            }
+
             const pointsEarnedInLevel = getPointsEarnedInLevel(state.score, state.levelScoreAtStart);
 
             if (hasMetLevelTarget(pointsEarnedInLevel, state.targetScore)) {
@@ -174,8 +274,10 @@ function startLevelTimer() {
 }
 
 function nextLevel() {
+    checkLevelAchievements();
     state.currentLevel += 1;
     state.levelScoreAtStart = state.score;
+    resetLevelStats();
     updateLevelDisplay();
     updateDifficultyParams();
     state.timeRemaining = state.difficultyParams.levelDuration;
@@ -183,6 +285,7 @@ function nextLevel() {
     clearBalloons();
     spawnBalloons();
     showLevelMessage();
+    playSound(state.specialPopSound);
     startLevelTimer();
 }
 
@@ -200,37 +303,69 @@ function endGame(title, message) {
         state.levelTimer = null;
     }
 
+    if (title === 'CONGRATULATIONS!') {
+        unlockAchievement('champion');
+    }
+    if (state.gameMode === 'survival' && state.score >= 50) {
+        unlockAchievement('survivalist');
+    }
+
+    const isNewRecord = state.gameMode === 'survival'
+        ? saveSurvivalHighScoreIfNeeded()
+        : saveHighScoreIfNeeded();
+
+    if (isNewRecord) {
+        updateHighScoreDisplay();
+    }
+
     document.getElementById('game-over-title').textContent = title;
     document.getElementById('game-over-title').style.color = title === 'CONGRATULATIONS!' ? '#ffeb3b' : '#ff4081';
     document.getElementById('game-over-message').textContent = message;
     document.getElementById('final-score').textContent = state.score;
-    document.getElementById('final-level').textContent = state.currentLevel;
-
-    const isNewRecord = saveHighScoreIfNeeded();
-    if (isNewRecord) {
-        updateHighScoreDisplay();
-    }
+    document.getElementById('final-level').textContent = state.gameMode === 'survival' ? 'Survival' : state.currentLevel;
     document.getElementById('new-high-score').style.display = isNewRecord ? 'block' : 'none';
     document.getElementById('game-over-screen').classList.remove('hidden');
 
-    state.controls.unlock();
+    state.controls.unlock?.();
     clearBalloons();
     clearParticles();
-    stopBackgroundMusic();
+    setMobileUiVisible(false);
     removeGameplayListeners();
 }
 
 export function startGame() {
-    state.controls.lock();
+    state.gameMode = getSelectedGameMode();
+    state.isTouchDevice = isTouchDevice();
+    state.reducedMotion = CONFIG.reducedMotion || detectReducedMotion();
+    document.body.classList.toggle('reduced-motion', state.reducedMotion);
+
+    if (!state.isTouchDevice) {
+        state.controls.lock();
+    }
+
     document.getElementById('start-screen').classList.add('hidden');
 
     state.score = 0;
     state.levelScoreAtStart = 0;
-    state.currentLevel = 1;
+    state.scoreMultiplier = 1;
+    state.scoreMultiplierExpiresAt = 0;
+    resetLevelStats();
+    updateScoreMultiplierDisplay(false);
+
+    if (state.gameMode === 'survival') {
+        state.currentLevel = 1;
+        state.survivalElapsed = 0;
+        state.timeRemaining = state.survivalDuration;
+        state.difficultyParams = getSurvivalDifficulty(0);
+        state.targetScore = 0;
+    } else {
+        state.currentLevel = 1;
+        updateDifficultyParams();
+        state.timeRemaining = state.difficultyParams.levelDuration;
+    }
+
     updateScoreDisplay();
     updateLevelDisplay();
-    updateDifficultyParams();
-    state.timeRemaining = state.difficultyParams.levelDuration;
     updateTimerDisplay();
     resetCombo();
     clearParticles();
@@ -245,6 +380,11 @@ export function startGame() {
 
     window.addEventListener('blur', pauseGame);
     document.addEventListener('keydown', handleKeyDown);
+
+    if (state.isTouchDevice) {
+        setMobileUiVisible(true);
+        return;
+    }
 
     document.body.requestPointerLock = document.body.requestPointerLock ||
         document.body.mozRequestPointerLock ||
@@ -261,10 +401,12 @@ export function pauseGame() {
     clearInterval(state.levelTimer);
     document.getElementById('pause-screen').style.display = 'flex';
 
-    document.exitPointerLock = document.exitPointerLock ||
-        document.mozExitPointerLock ||
-        document.webkitExitPointerLock;
-    document.exitPointerLock?.();
+    if (!state.isTouchDevice) {
+        document.exitPointerLock = document.exitPointerLock ||
+            document.mozExitPointerLock ||
+            document.webkitExitPointerLock;
+        document.exitPointerLock?.();
+    }
 }
 
 export function resumeGame() {
@@ -275,8 +417,11 @@ export function resumeGame() {
     state.gamePaused = false;
     document.getElementById('pause-screen').style.display = 'none';
     startLevelTimer();
-    document.body.requestPointerLock?.();
     playBackgroundMusic();
+
+    if (!state.isTouchDevice) {
+        document.body.requestPointerLock?.();
+    }
 }
 
 function handleKeyDown(event) {
@@ -293,7 +438,7 @@ function handleKeyDown(event) {
 
     if (event.code === 'Space' && state.gameActive && !state.gamePaused) {
         event.preventDefault();
-        onShoot();
+        shoot();
     }
 }
 
@@ -306,6 +451,7 @@ export function quitGame() {
     clearBalloons();
     clearParticles();
     stopBackgroundMusic();
+    setMobileUiVisible(false);
     removeGameplayListeners();
 }
 
@@ -316,7 +462,7 @@ export function restartGame() {
 }
 
 function onPointerLockChange() {
-    if (!isPointerLocked() && state.gameActive && !state.gamePaused) {
+    if (!isPointerLocked() && state.gameActive && !state.gamePaused && !state.isTouchDevice) {
         debugLog('Pointer lock exited');
     }
 }
@@ -335,6 +481,7 @@ function animate() {
     }
 
     updateParticles(delta);
+    refreshScoreMultiplier();
 
     if (state.controls.update) {
         state.controls.update();
@@ -351,7 +498,10 @@ function animate() {
 export function initGame() {
     applyConfig();
     state.audioEnabled = loadAudioPreference();
+    state.reducedMotion = CONFIG.reducedMotion || detectReducedMotion();
+    document.body.classList.toggle('reduced-motion', state.reducedMotion);
     updateHighScoreDisplay();
+    updateAchievementsDisplay();
 
     initRenderer();
     setupControls();
@@ -367,6 +517,11 @@ export function initGame() {
     window.addEventListener('resize', onWindowResize, false);
     document.addEventListener('click', onShoot);
 
+    removeTouchControls = setupTouchControls(state.renderer.domElement, {
+        onAim: applyTouchAim,
+        onShoot: shoot,
+    });
+
     animate();
 
     document.getElementById('start-button').addEventListener('click', startGame);
@@ -374,5 +529,6 @@ export function initGame() {
     document.getElementById('resume-button').addEventListener('click', resumeGame);
     document.getElementById('pause-quit-button').addEventListener('click', quitGame);
     document.getElementById('mute-button').addEventListener('click', toggleAudio);
+    document.getElementById('mobile-pause-button').addEventListener('click', pauseGame);
     applyAudioState();
 }

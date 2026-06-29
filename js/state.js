@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js';
-import { AUDIO_ENABLED_KEY, COMBO_RESET_DELAY, DEFAULT_DIFFICULTY, MAX_LEVEL } from './constants.js';
+import { AUDIO_ENABLED_KEY, COMBO_RESET_DELAY, DEFAULT_DIFFICULTY, MAX_LEVEL, SURVIVAL_DURATION } from './constants.js';
 
 export function createInitialState() {
     return {
@@ -14,6 +14,7 @@ export function createInitialState() {
         timeRemaining: 60,
         gameActive: false,
         gamePaused: false,
+        gameMode: 'arcade',
         comboCount: 0,
         comboMultiplier: 1,
         comboTimer: null,
@@ -34,6 +35,14 @@ export function createInitialState() {
         fpsFrames: 0,
         fpsLastSample: performance.now(),
         fpsDisplay: 0,
+        isTouchDevice: false,
+        scoreMultiplier: 1,
+        scoreMultiplierExpiresAt: 0,
+        hitsThisLevel: 0,
+        penaltyHitsThisLevel: 0,
+        reducedMotion: false,
+        survivalElapsed: 0,
+        survivalDuration: SURVIVAL_DURATION,
     };
 }
 

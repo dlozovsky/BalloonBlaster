@@ -306,3 +306,215 @@ button:hover {
 .hidden {
     display: none !important;
 }
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+    outline: 3px solid #ffeb3b;
+    outline-offset: 2px;
+}
+
+#mobile-pause-button {
+    position: absolute;
+    top: 140px;
+    left: 20px;
+    background-color: rgba(0, 0, 0, 0.4);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    font-size: 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+#mobile-hint {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+#multiplier-container {
+    position: absolute;
+    top: 130px;
+    left: 20px;
+    color: #00e5ff;
+    font-size: 18px;
+    font-weight: bold;
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 6px 12px;
+    border-radius: 10px;
+}
+
+.mode-select {
+    color: white;
+    background-color: rgba(0, 0, 0, 0.4);
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+}
+
+.mode-select label {
+    display: block;
+    margin: 6px 0;
+    cursor: pointer;
+}
+
+#achievements-panel {
+    color: white;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    max-width: 320px;
+}
+
+#achievements-panel h2 {
+    margin: 0 0 8px;
+    font-size: 18px;
+}
+
+#achievements-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 14px;
+}
+
+#achievements-list .earned {
+    color: #ffeb3b;
+}
+
+#achievements-list .locked {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.level-banner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 48px;
+    font-weight: bold;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    text-align: center;
+}
+
+.level-banner-sub {
+    display: block;
+    font-size: 24px;
+    margin-top: 10px;
+}
+
+.level-banner-warning {
+    display: block;
+    font-size: 20px;
+    margin-top: 10px;
+    color: #ff0000;
+}
+
+.combo-milestone,
+.powerup-message {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffeb3b;
+    font-size: 36px;
+    font-weight: bold;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+    z-index: 1001;
+    pointer-events: none;
+}
+
+.powerup-message {
+    color: #00e5ff;
+}
+
+.achievement-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    z-index: 2000;
+    text-align: center;
+}
+
+.share-confirmation {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 1000;
+    text-align: center;
+}
+
+.points-indicator {
+    position: absolute;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 100;
+    transition: all 1s ease-out;
+}
+
+.points-indicator.negative {
+    font-size: 32px;
+    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+}
+
+.points-indicator.fade-out {
+    opacity: 0;
+    transform: translateY(-50px);
+}
+
+.points-indicator.negative.fade-out {
+    transform: translateY(-80px) scale(1.2);
+}
+
+@keyframes screen-shake {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-4px, 2px); }
+    50% { transform: translate(4px, -2px); }
+    75% { transform: translate(-2px, -2px); }
+}
+
+body.screen-shake {
+    animation: screen-shake 0.3s ease;
+}
+
+body.reduced-motion .points-indicator,
+body.reduced-motion .combo-milestone,
+body.reduced-motion .powerup-message,
+body.reduced-motion.screen-shake {
+    animation: none !important;
+    transition: none !important;
+}
+
+#start-screen {
+    pointer-events: auto;
+    overflow-y: auto;
+}
+
+#start-screen button,
+#start-screen a,
+#start-screen input {
+    pointer-events: auto;
+}
