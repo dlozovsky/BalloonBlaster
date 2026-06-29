@@ -41,6 +41,7 @@ import {
 } from './lifecycle.js';
 import { initMenuState, syncMenuState } from './menuState.js';
 import { initStorage, saveHighScoreIfNeeded, saveSurvivalHighScoreIfNeeded } from './storage.js';
+import { installTestHooks } from './testHooks.js';
 import { loadAudioPreference, state } from './state.js';
 import {
     applyConfig,
@@ -64,6 +65,7 @@ import {
     clearParticles,
     createPopEffect,
     createRoom,
+    getPoolStats,
     initRenderer,
     onWindowResize,
     removeBalloon,
@@ -562,6 +564,19 @@ function animate() {
     state.renderer.render(state.scene, state.camera);
 }
 
+function installGameplayTestHooks() {
+    installTestHooks({
+        getBalloonCount: () => state.balloons.length,
+        getScore: () => state.score,
+        hitFirstBalloon: () => {
+            if (state.balloons[0]) {
+                hitBalloon(state.balloons[0]);
+            }
+        },
+        getPoolStats,
+    });
+}
+
 export function initGame() {
     initStorage();
     state.isTouchDevice = isTouchDevice();
@@ -606,4 +621,5 @@ export function initGame() {
     animate();
     applyAudioState();
     initMenuState();
+    installGameplayTestHooks();
 }

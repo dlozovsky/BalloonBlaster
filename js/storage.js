@@ -101,7 +101,21 @@ export function persistSaveData(
     writeItem = (key, value) => localStorage.setItem(key, value),
 ) {
     const normalized = normalizeSaveData(data);
-    writeItem(SAVE_DATA_KEY, JSON.stringify(normalized));
+
+    try {
+        writeItem(SAVE_DATA_KEY, JSON.stringify(normalized));
+    } catch (error) {
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+            console.warn('Save data could not be written: storage quota exceeded.');
+            return normalized;
+        }
+        if (error instanceof Error && error.name === 'QuotaExceededError') {
+            console.warn('Save data could not be written: storage quota exceeded.');
+            return normalized;
+        }
+        throw error;
+    }
+
     return normalized;
 }
 
